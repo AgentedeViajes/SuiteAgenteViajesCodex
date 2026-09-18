@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a315e">
+  <title>Simplificador de Rutas Aéreas | Suite del Agente</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230a315e'/%3E%3Cpath d='M13 35.5 49 17c2.2-1.1 4.4 1.4 2.9 3.3L38 38l4 11-5 3-7-10-9 5-4-4 8-8-10 4z' fill='%23ed6848'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="../assets/subapps.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar__inner">
+      <a class="brand" href="../index.html"><img src="../logo.png" alt="Tresor Travel"></a>
+      <a class="back-link" href="../index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Volver a la suite</a>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <div class="shell">
+      <div class="app-intro">
+        <p class="eyebrow">Herramienta aérea</p>
+        <h1>Simplificador de Rutas Aéreas</h1>
+        <p>Pega un itinerario en formato Amadeus y conviértelo en un resumen claro con horarios, aeropuertos, ciudades y compañías.</p>
+      </div>
+
+      <div class="workspace">
+        <section class="panel">
+          <div class="panel__header">
+            <h2>Itinerario Amadeus</h2>
+            <p>Se admiten segmentos con aeropuerto unido o separado.</p>
+          </div>
+          <div class="panel__body">
+            <div class="field">
+              <label for="amadeus-input">Pegar ruta aérea</label>
+              <textarea id="amadeus-input" rows="11" spellcheck="false" placeholder="1 AR 1132 Y 15NOV 6 EZEJFK HK1 2355 0830+1 E 0 11:35&#10;2 AA 954 M 22NOV 6 JFKEZE HK1 2210 0955+1 E 0 10:45"></textarea>
+              <p class="hint">Ejemplo: número de tramo, compañía, vuelo, clase, fecha, origen/destino, estado y horarios.</p>
+            </div>
+            <div class="button-row">
+              <button class="btn btn--primary" id="simplify" type="button">Interpretar ruta</button>
+              <button class="btn btn--secondary" id="load-example" type="button">Cargar ejemplo</button>
+            </div>
+            <div class="status" id="route-status" role="status"></div>
+          </div>
+        </section>
+
+        <section class="panel preview-panel" aria-live="polite">
+          <div class="panel__header">
+            <h2>Resumen visual</h2>
+            <p>Revisa la información antes de descargar.</p>
+          </div>
+          <div class="empty-state" id="route-empty">
+            <div>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m2 16 20-8-9 12-2-6-5-3-4 5Z"/><path d="m11 14 3-2"/></svg>
+              <h3>Tu ruta aparecerá aquí</h3>
+              <p>Pega los segmentos de Amadeus y pulsa “Interpretar ruta”.</p>
+            </div>
+          </div>
+          <div class="result-wrap" id="route-result"><div class="result-sheet route-sheet" id="route-sheet"></div></div>
+          <div class="result-toolbar" id="route-actions">
+            <button class="btn btn--primary" id="download-pdf" type="button">Descargar PDF</button>
+            <button class="btn btn--accent" id="download-image" type="button">Descargar imagen</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer><div class="shell footer-inner"><p>© 2026 Tresor Travel</p><p>Plataforma de uso interno</p></div></footer>
+  <canvas id="export-canvas" width="1080" height="1350" hidden></canvas>
+  <script src="../assets/subapps.js?v=20260918-4"></script>
+  <script>
+    const { escapeHtml, loadImage, wrapText, roundedRect, downloadCanvas, canvasToPdf, setStatus } = SuiteUtils;
+    const airportMap = {
+      EZE:['Buenos Aires','Ministro Pistarini'], AEP:['Buenos Aires','Aeroparque Jorge Newbery'], COR:['Córdoba','Ing. Ambrosio Taravella'], MDZ:['Mendoza','El Plumerillo'], BRC:['Bariloche','Tte. Luis Candelaria'], IGR:['Puerto Iguazú','Cataratas del Iguazú'], SLA:['Salta','Martín Miguel de Güemes'], USH:['Ushuaia','Malvinas Argentinas'], FTE:['El Calafate','Comandante Armando Tola'], ROS:['Rosario','Islas Malvinas'],
+      GRU:['São Paulo','Guarulhos'], GIG:['Río de Janeiro','Galeão'], SCL:['Santiago','Arturo Merino Benítez'], LIM:['Lima','Jorge Chávez'], BOG:['Bogotá','El Dorado'], MEX:['Ciudad de México','Benito Juárez'], CUN:['Cancún','Cancún'], PUJ:['Punta Cana','Punta Cana'], MIA:['Miami','Miami'], JFK:['Nueva York','John F. Kennedy'], EWR:['Nueva York','Newark Liberty'], LAX:['Los Ángeles','Los Angeles'], DFW:['Dallas','Dallas/Fort Worth'], ATL:['Atlanta','Hartsfield-Jackson'],
+      MAD:['Madrid','Adolfo Suárez Madrid-Barajas'], BCN:['Barcelona','El Prat'], CDG:['París','Charles de Gaulle'], ORY:['París','Orly'], LHR:['Londres','Heathrow'], LGW:['Londres','Gatwick'], FCO:['Roma','Fiumicino'], MXP:['Milán','Malpensa'], FRA:['Fráncfort','Frankfurt'], AMS:['Ámsterdam','Schiphol'], LIS:['Lisboa','Humberto Delgado'], IST:['Estambul','Istanbul'], ZRH:['Zúrich','Zürich'],
+      DXB:['Dubái','Dubai International'], DOH:['Doha','Hamad International'], AUH:['Abu Dabi','Zayed International'], NRT:['Tokio','Narita'], HND:['Tokio','Haneda'], ICN:['Seúl','Incheon'], SIN:['Singapur','Changi'], BKK:['Bangkok','Suvarnabhumi'], SYD:['Sídney','Kingsford Smith']
+    };
+    const airlineMap = { AR:'Aerolíneas Argentinas', AA:'American Airlines', LA:'LATAM Airlines', IB:'Iberia', UX:'Air Europa', AF:'Air France', KL:'KLM', LH:'Lufthansa', LX:'SWISS', AZ:'ITA Airways', BA:'British Airways', EK:'Emirates', QR:'Qatar Airways', TK:'Turkish Airlines', UA:'United Airlines', DL:'Delta Air Lines', AC:'Air Canada', AM:'Aeroméxico', CM:'Copa Airlines', AV:'Avianca', G3:'GOL', H2:'SKY Airline', JA:'JetSMART', FO:'Flybondi' };
+    const months = { JAN:'ene', FEB:'feb', MAR:'mar', APR:'abr', MAY:'may', JUN:'jun', JUL:'jul', AUG:'ago', SEP:'sep', OCT:'oct', NOV:'nov', DEC:'dic' };
+    let currentSegments = [];
+
+    function parseLine(raw) {
+      const line = raw.toUpperCase().replace(/\s+/g,' ').trim();
+      if (!line || line.startsWith('---')) return null;
+      const match = line.match(/^(\d+)\s+([A-Z0-9]{2,3})\s*(\d{1,4})\s+([A-Z])\s+(\d{1,2}[A-Z]{3})(?:\s+\d)?\s+([A-Z]{3})\s*([A-Z]{3})\s+([A-Z]{2}\d?)\s+(\d{4})\s+(\d{4})([+-]\d)?/);
+      if (!match) return null;
+      const [, order, airline, flight, travelClass, date, origin, destination, status, departure, arrival, dayOffset] = match;
+      const airport = (code) => airportMap[code] || [code, 'Aeropuerto no identificado'];
+      const time = (value) => `${value.slice(0,2)}:${value.slice(2)}`;
+      return {
+        order:Number(order), airline, airlineName:airlineMap[airline] || airline, flight:`${airline} ${flight}`, travelClass,
+        date:`${Number(date.slice(0,-3))} ${months[date.slice(-3)] || date.slice(-3)}`,
+        origin, originCity:airport(origin)[0], originAirport:airport(origin)[1],
+        destination, destinationCity:airport(destination)[0], destinationAirport:airport(destination)[1],
+        status, departure:time(departure), arrival:time(arrival), dayOffset:dayOffset ? dayOffset.replace('+','+') : ''
+      };
+    }
+
+    function parseItinerary(text) {
+      return text.split(/\r?\n/).map(parseLine).filter(Boolean).sort((a,b) => a.order - b.order);
+    }
+
+    function renderSegments(segments) {
+      const first = segments[0];
+      const last = segments.at(-1);
+      document.querySelector('#route-sheet').innerHTML = `
+        <div class="sheet-brand"><img src="../logo.png" alt="Tresor Travel"><span>Resumen de itinerario</span></div>
+        <h3 class="route-title">${escapeHtml(first.originCity)} → ${escapeHtml(last.destinationCity)}</h3>
+        <p class="route-subtitle">${segments.length} ${segments.length === 1 ? 'tramo' : 'tramos'} · Información simplificada para el pasajero</p>
+        <div class="segment-list">${segments.map((segment) => `
+          <article class="segment">
+            <div class="segment__point"><strong>${segment.departure}</strong><span>${escapeHtml(segment.originCity)}</span><span>${segment.origin}</span></div>
+            <div class="segment__line"><span class="segment__plane">✈</span></div>
+            <div class="segment__point segment__point--right"><strong>${segment.arrival}${segment.dayOffset ? `<small>${segment.dayOffset}</small>` : ''}</strong><span>${escapeHtml(segment.destinationCity)}</span><span>${segment.destination}</span></div>
+            <div class="segment__meta"><span><strong>${segment.date}</strong></span><span>${escapeHtml(segment.airlineName)}</span><span>Vuelo <strong>${segment.flight}</strong></span><span>Clase ${segment.travelClass}</span></div>
+          </article>`).join('')}</div>`;
+      document.querySelector('#route-empty').style.display = 'none';
+      document.querySelector('#route-result').classList.add('is-visible');
+      document.querySelector('#route-actions').classList.add('is-visible');
+    }
+
+    async function drawExport(segments) {
+      const canvas = document.querySelector('#export-canvas');
+      const requiredHeight = 350 + segments.length * 210;
+      canvas.height = Math.max(1350, requiredHeight);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#f4f8fb'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = '#fff'; roundedRect(ctx,55,55,970,canvas.height-110,30); ctx.fill();
+      try { const logo = await loadImage('../logo.png'); ctx.drawImage(logo,90,90,235,60); } catch (_) {}
+      ctx.fillStyle = '#68778b'; ctx.font = '700 22px sans-serif'; ctx.textAlign = 'right'; ctx.fillText('RESUMEN DE ITINERARIO',970,125); ctx.textAlign = 'left';
+      ctx.strokeStyle = '#dce6ef'; ctx.beginPath(); ctx.moveTo(90,180); ctx.lineTo(970,180); ctx.stroke();
+      ctx.fillStyle = '#061b33'; ctx.font = '800 48px sans-serif'; ctx.fillText(`${segments[0].originCity} → ${segments.at(-1).destinationCity}`,90,255);
+      ctx.fillStyle = '#68778b'; ctx.font = '24px sans-serif'; ctx.fillText(`${segments.length} ${segments.length === 1 ? 'tramo' : 'tramos'} · Información simplificada para el pasajero`,90,300);
+      let y = 345;
+      segments.forEach((s) => {
+        ctx.fillStyle = '#f7fafc'; roundedRect(ctx,90,y,880,172,22); ctx.fill();
+        ctx.strokeStyle = '#dce6ef'; ctx.stroke();
+        ctx.fillStyle = '#061b33'; ctx.font = '800 35px sans-serif'; ctx.fillText(s.departure,125,y+54); ctx.textAlign='right'; ctx.fillText(`${s.arrival}${s.dayOffset}`,935,y+54); ctx.textAlign='left';
+        ctx.fillStyle = '#1763a6'; ctx.font = '800 26px sans-serif'; ctx.fillText(s.origin,125,y+93); ctx.textAlign='right'; ctx.fillText(s.destination,935,y+93); ctx.textAlign='left';
+        ctx.strokeStyle = '#9bbad3'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(310,y+70); ctx.lineTo(750,y+70); ctx.stroke();
+        ctx.fillStyle = '#ed6848'; ctx.font = '32px sans-serif'; ctx.textAlign='center'; ctx.fillText('✈',530,y+80); ctx.textAlign='left';
+        ctx.fillStyle = '#68778b'; ctx.font = '20px sans-serif'; ctx.fillText(`${s.originCity} · ${s.originAirport}`,125,y+126); ctx.textAlign='right'; ctx.fillText(`${s.destinationCity} · ${s.destinationAirport}`,935,y+126); ctx.textAlign='left';
+        ctx.fillStyle = '#15243a'; ctx.font = '700 20px sans-serif'; ctx.fillText(`${s.date}  ·  ${s.airlineName}  ·  Vuelo ${s.flight}  ·  Clase ${s.travelClass}`,125,y+157);
+        y += 195;
+      });
+      ctx.fillStyle = '#68778b'; ctx.font = '18px sans-serif'; ctx.textAlign='center'; ctx.fillText('Verificar horarios y condiciones con la reserva vigente.',540,canvas.height-78); ctx.textAlign='left';
+      return canvas;
+    }
+
+    document.querySelector('#simplify').addEventListener('click', () => {
+      const input = document.querySelector('#amadeus-input').value;
+      currentSegments = parseItinerary(input);
+      if (!currentSegments.length) {
+        setStatus(document.querySelector('#route-status'),'No pude reconocer segmentos. Revisa que cada línea incluya compañía, vuelo, fecha, origen/destino y horarios.','error');
+        return;
+      }
+      renderSegments(currentSegments);
+      setStatus(document.querySelector('#route-status'),`Ruta interpretada correctamente: ${currentSegments.length} ${currentSegments.length === 1 ? 'tramo' : 'tramos'}.`,'success');
+    });
+    document.querySelector('#load-example').addEventListener('click', () => {
+      document.querySelector('#amadeus-input').value = '1 AR 1132 Y 15NOV 6 EZEJFK HK1 2355 0830+1 E 0 11:35\n2 AA 954 M 22NOV 6 JFKEZE HK1 2210 0955+1 E 0 10:45';
+      document.querySelector('#simplify').click();
+    });
+    document.querySelector('#download-image').addEventListener('click', async () => downloadCanvas(await drawExport(currentSegments),'ruta-aerea.jpg'));
+    document.querySelector('#download-pdf').addEventListener('click', async () => canvasToPdf(await drawExport(currentSegments),'ruta-aerea.pdf'));
+  </script>
+</body>
+</html>

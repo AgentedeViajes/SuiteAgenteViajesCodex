@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a315e">
+  <meta name="description" content="Suite interna de herramientas para agentes de viajes.">
+  <title>Suite del Agente de Viajes</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230a315e'/%3E%3Cpath d='M13 35.5 49 17c2.2-1.1 4.4 1.4 2.9 3.3L38.2 37.8l4 11.2-5.3 2.5-7.2-9.6-8.8 4.6-3.5-3.5 7.8-7.7-9.8 3.2z' fill='%23ef6a45'/%3E%3C/svg%3E">
+  <style>
+    /* ---------- Base y variables de marca ---------- */
+    :root {
+      --navy-950: #061b33;
+      --navy-900: #0a315e;
+      --blue-700: #1763a6;
+      --blue-500: #2b8bd3;
+      --sky-100: #eaf5fc;
+      --coral-500: #ed6848;
+      --amber-400: #f4b64a;
+      --ink: #15243a;
+      --muted: #68778b;
+      --line: #dce6ef;
+      --surface: #ffffff;
+      --page: #f4f8fb;
+      --shadow: 0 18px 48px rgba(7, 39, 72, .10);
+      --shadow-hover: 0 22px 56px rgba(7, 39, 72, .17);
+      --radius-lg: 26px;
+      --radius-md: 18px;
+      --max-width: 1240px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 86% 8%, rgba(43, 139, 211, .10), transparent 22rem),
+        linear-gradient(180deg, #fbfdff 0%, var(--page) 100%);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, a { font: inherit; }
+
+    button { color: inherit; }
+
+    a { color: inherit; }
+
+    .shell {
+      width: min(calc(100% - 40px), var(--max-width));
+      margin-inline: auto;
+    }
+
+    /* ---------- Encabezado ---------- */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(255, 255, 255, .88);
+      border-bottom: 1px solid rgba(220, 230, 239, .85);
+      backdrop-filter: blur(16px);
+    }
+
+    .topbar__inner {
+      min-height: 82px;
+      display: grid;
+      grid-template-columns: 210px 1fr auto;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      text-decoration: none;
+    }
+
+    .brand img {
+      display: block;
+      width: 188px;
+      max-width: 100%;
+      height: 45px;
+      object-fit: contain;
+      object-position: left center;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      color: var(--navy-950);
+      font-size: clamp(1.1rem, 2vw, 1.45rem);
+      font-weight: 760;
+      letter-spacing: -.025em;
+      text-align: center;
+    }
+
+    .internal-badge {
+      justify-self: end;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 13px;
+      color: var(--navy-900);
+      background: var(--sky-100);
+      border: 1px solid #d3e9f7;
+      border-radius: 999px;
+      font-size: .8rem;
+      font-weight: 750;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .internal-badge::before {
+      width: 8px;
+      height: 8px;
+      content: "";
+      background: #28a77a;
+      border-radius: 50%;
+      box-shadow: 0 0 0 4px rgba(40, 167, 122, .12);
+    }
+
+    .topbar-actions { justify-self: end; display: flex; align-items: center; gap: 10px; }
+    .ai-settings-button {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 13px;
+      color: var(--navy-900);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: .8rem;
+      font-weight: 760;
+      box-shadow: 0 5px 16px rgba(7,39,72,.06);
+    }
+    .ai-settings-button:hover { border-color: #a8cbe4; background: var(--sky-100); }
+    .ai-settings-button__dot { width: 9px; height: 9px; background: #aab6c2; border-radius: 50%; box-shadow: 0 0 0 4px rgba(170,182,194,.14); }
+    .ai-settings-button.is-configured .ai-settings-button__dot { background: #28a77a; box-shadow: 0 0 0 4px rgba(40,167,122,.13); }
+
+    /* ---------- Bienvenida ---------- */
+    main { padding: 48px 0 70px; }
+
+    .welcome {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 32px;
+      padding: clamp(28px, 5vw, 48px);
+      color: #fff;
+      background:
+        linear-gradient(115deg, rgba(6, 27, 51, .98), rgba(10, 65, 116, .94)),
+        var(--navy-900);
+      border: 1px solid rgba(255, 255, 255, .12);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      isolation: isolate;
+    }
+
+    .welcome::before,
+    .welcome::after {
+      position: absolute;
+      z-index: -1;
+      content: "";
+      border: 1px solid rgba(255, 255, 255, .14);
+      border-radius: 50%;
+    }
+
+    .welcome::before {
+      right: -78px;
+      top: -154px;
+      width: 360px;
+      height: 360px;
+    }
+
+    .welcome::after {
+      right: 58px;
+      bottom: -158px;
+      width: 270px;
+      height: 270px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0 0 12px;
+      color: #a8dbf7;
+      font-size: .8rem;
+      font-weight: 800;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      width: 26px;
+      height: 2px;
+      content: "";
+      background: var(--coral-500);
+      border-radius: 99px;
+    }
+
+    .welcome h2 {
+      max-width: 760px;
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      line-height: 1.05;
+      letter-spacing: -.055em;
+    }
+
+    .welcome p:not(.eyebrow) {
+      max-width: 680px;
+      margin: 18px 0 0;
+      color: rgba(255, 255, 255, .76);
+      font-size: 1rem;
+    }
+
+    .route-mark {
+      position: relative;
+      width: 152px;
+      height: 152px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      background: rgba(255, 255, 255, .08);
+      border: 1px solid rgba(255, 255, 255, .16);
+      border-radius: 50%;
+    }
+
+    .route-mark::before {
+      position: absolute;
+      inset: 14px;
+      content: "";
+      border: 1px dashed rgba(255, 255, 255, .23);
+      border-radius: 50%;
+      animation: spin 28s linear infinite;
+    }
+
+    .route-mark svg {
+      width: 56px;
+      color: #fff;
+      filter: drop-shadow(0 7px 12px rgba(0, 0, 0, .16));
+      transform: rotate(-8deg);
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---------- Catálogo de herramientas ---------- */
+    .tools-section { margin-top: 46px; }
+
+    .section-heading {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 22px;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+      color: var(--navy-950);
+      font-size: clamp(1.55rem, 3vw, 2.15rem);
+      line-height: 1.15;
+      letter-spacing: -.035em;
+    }
+
+    .section-heading p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: .96rem;
+    }
+
+    .tool-count {
+      flex: 0 0 auto;
+      padding: 7px 11px;
+      color: var(--muted);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: .78rem;
+      font-weight: 720;
+    }
+
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .tool-card {
+      --accent: #1763a6;
+      --tint: #eaf5fc;
+      position: relative;
+      min-height: 218px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 23px;
+      text-align: left;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      box-shadow: 0 8px 26px rgba(7, 39, 72, .055);
+      cursor: pointer;
+      transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease;
+    }
+
+    .tool-card::after {
+      position: absolute;
+      right: -24px;
+      bottom: -35px;
+      width: 112px;
+      height: 112px;
+      content: "";
+      background: var(--tint);
+      border-radius: 50%;
+      opacity: .75;
+      transition: transform .3s ease;
+    }
+
+    .tool-card:hover {
+      border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-6px);
+    }
+
+    .tool-card:hover::after { transform: scale(1.2); }
+
+    .tool-card:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--accent) 32%, transparent);
+      outline-offset: 3px;
+    }
+
+    .tool-card--coral { --accent: #d8553e; --tint: #fff0eb; }
+    .tool-card--gold { --accent: #ad7311; --tint: #fff6df; }
+    .tool-card--teal { --accent: #16796e; --tint: #e6f6f2; }
+    .tool-card--violet { --accent: #6855a6; --tint: #f0edfc; }
+
+    .tool-icon {
+      position: relative;
+      z-index: 1;
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      color: var(--accent);
+      background: var(--tint);
+      border-radius: 14px;
+    }
+
+    .tool-icon svg { width: 24px; height: 24px; }
+
+    .tool-card h3 {
+      position: relative;
+      z-index: 1;
+      margin: 20px 0 6px;
+      color: var(--navy-950);
+      font-size: 1.04rem;
+      line-height: 1.27;
+      letter-spacing: -.015em;
+    }
+
+    .tool-card p {
+      position: relative;
+      z-index: 1;
+      margin: 0;
+      color: var(--muted);
+      font-size: .86rem;
+      line-height: 1.45;
+    }
+
+    .card-action {
+      position: relative;
+      z-index: 2;
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      margin: auto 0 0 auto;
+      color: var(--accent);
+      background: #fff;
+      border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
+      border-radius: 50%;
+      transition: color .2s ease, background .2s ease, transform .2s ease;
+    }
+
+    .tool-card:hover .card-action {
+      color: #fff;
+      background: var(--accent);
+      transform: translateX(2px);
+    }
+
+    .card-action svg { width: 16px; height: 16px; }
+
+    /* ---------- Modal informativo ---------- */
+    .modal {
+      width: min(calc(100% - 32px), 500px);
+      padding: 0;
+      color: var(--ink);
+      background: transparent;
+      border: 0;
+    }
+
+    .modal::backdrop {
+      background: rgba(4, 19, 36, .67);
+      backdrop-filter: blur(5px);
+    }
+
+    .modal__panel {
+      position: relative;
+      padding: 34px;
+      background: #fff;
+      border: 1px solid rgba(255, 255, 255, .7);
+      border-radius: 24px;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, .30);
+    }
+
+    .modal__icon {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      color: var(--blue-700);
+      background: var(--sky-100);
+      border-radius: 16px;
+    }
+
+    .modal__icon svg { width: 26px; }
+
+    .modal h2 {
+      margin: 20px 44px 8px 0;
+      color: var(--navy-950);
+      font-size: 1.55rem;
+      line-height: 1.2;
+      letter-spacing: -.03em;
+    }
+
+    .modal p { margin: 0; color: var(--muted); }
+
+    .modal__status {
+      display: inline-flex;
+      margin-top: 22px;
+      padding: 8px 12px;
+      color: #8b5b0b;
+      background: #fff5dd;
+      border: 1px solid #f4dfad;
+      border-radius: 999px;
+      font-size: .8rem;
+      font-weight: 760;
+    }
+
+    .modal__close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      background: #f3f6f9;
+      border: 0;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: color .2s ease, background .2s ease;
+    }
+
+    .modal__close:hover { color: var(--navy-950); background: #e5edf4; }
+    .modal__close:focus-visible { outline: 3px solid rgba(23, 99, 166, .25); outline-offset: 2px; }
+
+    .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 22px; }
+    .settings-field { margin-top: 14px; }
+    .settings-field label { display: block; margin-bottom: 7px; color: var(--navy-950); font-size: .84rem; font-weight: 750; }
+    .settings-field input, .settings-field select {
+      width: 100%; min-height: 45px; padding: 0 12px; color: var(--ink); background: #fbfdff;
+      border: 1px solid #cfdce7; border-radius: 11px; outline: none;
+    }
+    .settings-field input:focus, .settings-field select:focus { border-color: var(--blue-500); box-shadow: 0 0 0 3px rgba(43,139,211,.13); }
+    .settings-check { display: flex; align-items: flex-start; gap: 9px; margin-top: 16px; color: var(--muted); font-size: .78rem; }
+    .settings-check input { margin-top: 3px; accent-color: var(--blue-700); }
+    .settings-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 20px; }
+    .settings-action { min-height: 42px; padding: 0 14px; border: 0; border-radius: 10px; cursor: pointer; font-weight: 750; }
+    .settings-action--primary { color: #fff; background: var(--navy-900); }
+    .settings-action--secondary { color: var(--navy-900); background: var(--sky-100); border: 1px solid #d3e9f7; }
+    .settings-action--ghost { color: var(--muted); background: #f3f6f9; }
+    .settings-action:disabled { opacity: .55; cursor: wait; }
+    .settings-status { display: none; margin-top: 14px; padding: 10px 12px; border-radius: 9px; font-size: .8rem; }
+    .settings-status.is-visible { display: block; }
+    .settings-status--success { color: #126148; background: #ebf8f3; border: 1px solid #bee8d8; }
+    .settings-status--error { color: #7c2828; background: #fff0f0; border: 1px solid #f1caca; }
+    .settings-status--info { color: #174d7c; background: var(--sky-100); border: 1px solid #c9e4f5; }
+    .settings-note { margin-top: 15px !important; font-size: .76rem; }
+
+    /* ---------- Pie ---------- */
+    footer {
+      color: #b8c9da;
+      background: var(--navy-950);
+    }
+
+    .footer__inner {
+      min-height: 92px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding-block: 24px;
+      font-size: .83rem;
+    }
+
+    .footer__inner p { margin: 0; }
+
+    .footer-note {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #fff;
+      font-weight: 680;
+    }
+
+    .footer-note svg { width: 16px; color: var(--amber-400); }
+
+    /* ---------- Adaptación a pantallas ---------- */
+    @media (max-width: 1020px) {
+      .tool-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .topbar__inner { grid-template-columns: 188px 1fr auto; }
+      .brand img { width: 174px; }
+    }
+
+    @media (max-width: 760px) {
+      .shell { width: min(calc(100% - 28px), var(--max-width)); }
+      .topbar__inner { min-height: 72px; grid-template-columns: 150px 1fr; gap: 14px; }
+      .brand img { width: 146px; height: 38px; }
+      .topbar h1 { text-align: right; font-size: 1rem; }
+      .internal-badge { display: none; }
+      .ai-settings-button__label { display: none; }
+      main { padding: 28px 0 52px; }
+      .welcome { grid-template-columns: 1fr; }
+      .welcome h2 { max-width: 12ch; }
+      .route-mark { display: none; }
+      .tools-section { margin-top: 36px; }
+      .tool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .tool-card { min-height: 205px; }
+      .footer__inner { align-items: flex-start; flex-direction: column; gap: 10px; }
+    }
+
+    @media (max-width: 520px) {
+      .topbar__inner { grid-template-columns: 1fr; justify-items: center; gap: 3px; padding: 10px 0 11px; }
+      .brand, .brand img { width: 155px; }
+      .brand img { object-position: center; }
+      .topbar h1 { text-align: center; font-size: .92rem; }
+      .topbar-actions { justify-self: center; margin-top: 6px; }
+      .welcome { padding: 26px 23px 28px; border-radius: 22px; }
+      .welcome h2 { font-size: 2.25rem; }
+      .welcome p:not(.eyebrow) { font-size: .94rem; }
+      .section-heading { align-items: flex-start; flex-direction: column; gap: 12px; }
+      .tool-grid { grid-template-columns: 1fr; }
+      .tool-card { min-height: 184px; }
+      .modal__panel { padding: 28px 24px; }
+      .settings-grid { grid-template-columns: 1fr; gap: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar__inner">
+      <a class="brand" href="#inicio" aria-label="Ir al inicio">
+        <img src="logo.png" alt="Tresor Travel">
+      </a>
+      <h1>Suite del Agente de Viajes</h1>
+      <div class="topbar-actions">
+        <button class="ai-settings-button" id="open-ai-settings" type="button"><span class="ai-settings-button__dot"></span><span class="ai-settings-button__label">Configurar IA</span></button>
+        <span class="internal-badge">Sistema interno</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="inicio">
+    <div class="shell">
+      <section class="welcome" aria-labelledby="welcome-title">
+        <div>
+          <p class="eyebrow">Tu espacio de trabajo</p>
+          <h2 id="welcome-title">Todo tu viaje, en un solo lugar.</h2>
+          <p>Accede rápidamente a las herramientas que necesitas para cotizar, organizar, comunicar y gestionar cada operación.</p>
+        </div>
+        <div class="route-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 2 9.5 14.5M22 2l-7 20-5.5-7.5L2 9l20-7Z"/>
+          </svg>
+        </div>
+      </section>
+
+      <section class="tools-section" aria-labelledby="tools-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="tools-title">Herramientas de trabajo</h2>
+            <p>Selecciona una aplicación para comenzar.</p>
+          </div>
+          <span class="tool-count">12 aplicaciones</span>
+        </div>
+
+        <div class="tool-grid">
+          <button class="tool-card" type="button" data-app="Simplificador de Rutas Aéreas" data-href="apps/rutas-aereas.html">
+            <span class="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m2 16 20-8-9 12-2-6-5-3-4 5Z"/><path d="m11 14 3-2"/></svg>
+            </span>
+            <h3>Simplificador de Rutas Aéreas</h3>
+            <p>Ordena y presenta trayectos de forma clara.</p>
+            <span class="card-action" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span>
+          </button>
+
+          <button class="tool-card tool-card--coral" type="button" data-app="Creador de Posts" data-href="apps/creador-posts.html">
+            <span class="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16M6 16l1-4L17 2l5 5-10 10-4 1Z"/><path d="m14 5 5 5"/></svg>
+            </span>
+            <h3>Creador de Posts</h3>
+            <p>Prepara contenido para comunicar tus propuestas.</p>
+            <span class="card-action" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span>
+          </button>
+
+          <button class="tool-card tool-card--gold" type="button" data-app="Cotizador de Viajes Simples" data-href="apps/cotizador-simple.html">
+            <span class="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2Z"/><path d="M9 7h6M9 11h6M9 15h3"/></svg>
+            </span>
+            <h3>Cotizador de Viajes Simples</h3>
+            <p>Arma presupuestos para itinerarios directos.</p>
+            <span class="card-action" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span>
+          </button>
+
+          <button class="tool-card tool-card--teal" type="button" data-app="Cotizador de Viajes Múltiples" data-href="apps/cotizador-multiple.html">
+            <span class="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 6h5a3 3 0 0 1 3 3v0a3 3 0 0 1-3 3H9a3 3 0 0 0-3 3v1a2 2 0 0 0 2 2h9"/></svg>
+            </span>
+            <h3>Cotizador de Viajes Múltiples</h3>
+            <p>Gestiona propuestas con varios destinos y etapas.</p>
+            <span class="card-action" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span>
+          </button>
+
+          <button class="tool-card tool-card--coral" type="button" data-app="Cotizador con Markup" data-href="apps/cotizador-markup.html">
+            <span class="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5 5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/><path d="M3 22h18"/></svg>
+            </span>
+            <h3>Cotizador con Markup</h3>
+            <p>Calcula costos netos, markup y precio final del viaje.</p>
+            <span class="card-action" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span>
+          </button>
+
+          <button class="tool-card tool-card--violet" type="button" data-app="Rentabilidad" data-href="apps/rentabilidad.html">
+            <span class="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/><path d="m3 7 6-4 6 6 6-5"/></svg>
+            </span>
+            <h3>Rentabilidad</h3>
+            <p>Calcula márgenes y controla el resultado de cada venta.</p>
+            <span class="card-action" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span>
+          </button>
+
+          <button class="tool-card" type="button" data-app="Text Fix" data-href="apps/text-fix.html">
+            <span class="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6V3h16v3M9 21h6M12 3v18"/><path d="m16 15 2 2 4-5"/></svg>
+            </span>
+            <h3>Text Fix</h3>
+            <p>Corrige y mejora textos de atención y venta.</p>
+            <span class="card-action" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span>
+          </button>
+
+          <button class="tool-card tool-card--coral" type="button" data-app="Conversor de Monedas" data-href="apps/conversor-monedas.html">
+            <span class="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h14l-3-3m3 3-3 3M20 17H6l3 3m-3-3 3-3"/></svg>
+            </span>
+            <h3>Conversor de Monedas</h3>
+            <p>Convierte importes para tus cotizaciones.</p>
+            <span class="card-action" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span>
+          </button>
+
+          <button class="tool-card tool-card--gold" type="button" data-app="Agenda" data-href="apps/agenda.html">
+            <span class="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/><path d="M8 14h2M14 14h2M8 18h2"/></svg>
+            </span>
+            <h3>Agenda</h3>
+            <p>Organiza seguimientos, tareas y fechas importantes.</p>
+            <span class="card-action" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span>
+          </button>
+
+          <button class="tool-card tool-card--teal" type="button" data-app="Resumen de Itinerario" data-href="apps/resumen-itinerario.html">
+            <span class="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg>
+            </span>
+            <h3>Resumen de Itinerario</h3>
+            <p>Presenta la información clave del viaje en un vistazo.</p>
+            <span class="card-action" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span>
+          </button>
+
+          <button class="tool-card tool-card--violet" type="button" data-app="Ventas de Free Lance" data-href="apps/ventas-freelance.html">
+            <span class="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m16 11 2 2 4-5"/></svg>
+            </span>
+            <h3>Ventas de Free Lance</h3>
+            <p>Registra y consulta operaciones de colaboradores.</p>
+            <span class="card-action" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span>
+          </button>
+
+          <button class="tool-card tool-card--gold" type="button" data-app="Codificador/Decodificador IATA" data-href="apps/codificador-iata.html">
+            <span class="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 17h16"/><path d="m8 3-4 4 4 4M16 13l4 4-4 4"/><path d="M11 12h2M10 4l4 16"/></svg>
+            </span>
+            <h3>Codificador/Decodificador IATA</h3>
+            <p>Consulta códigos de aeropuertos, ciudades y aerolíneas.</p>
+            <span class="card-action" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span>
+          </button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="shell footer__inner">
+      <p>&copy; <span id="current-year"></span> Tresor Travel. Todos los derechos reservados.</p>
+      <p class="footer-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        Plataforma de uso interno
+      </p>
+    </div>
+  </footer>
+
+  <dialog class="modal" id="ai-settings-modal" aria-labelledby="ai-settings-title">
+    <form class="modal__panel" method="dialog" id="ai-settings-form">
+      <button class="modal__close" type="button" data-close-ai aria-label="Cerrar ventana">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+      <div class="modal__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="4"/></svg></div>
+      <h2 id="ai-settings-title">Configuración general de IA</h2>
+      <p>Configura una sola vez el proveedor. La selección se aplicará automáticamente en las aplicaciones con funciones de IA.</p>
+      <div class="settings-grid">
+        <div class="settings-field"><label for="global-ai-provider">Proveedor</label><select id="global-ai-provider"><option value="gemini">Google Gemini</option><option value="pollinations">Pollinations</option><option value="openai">OpenAI</option><option value="qwen">Qwen compatible</option></select></div>
+        <div class="settings-field"><label for="global-ai-key">API key</label><input id="global-ai-key" type="password" autocomplete="off" placeholder="Pegar clave sin comillas"></div>
+      </div>
+      <div class="settings-field" id="global-ai-endpoint-wrap" hidden><label for="global-ai-endpoint">Endpoint de Qwen</label><input id="global-ai-endpoint" placeholder="https://.../chat/completions"></div>
+      <label class="settings-check"><input id="remember-ai" type="checkbox"> Recordar la clave en este navegador. Úsalo solamente en un equipo privado y de confianza.</label>
+      <p class="settings-note">Para Pollinations, usa una clave obtenida en enter.pollinations.ai. Las claves secretas no deben incorporarse al código ni compartirse.</p>
+      <div class="settings-actions"><button class="settings-action settings-action--secondary" id="test-global-ai" type="button">Comprobar conexión</button><button class="settings-action settings-action--primary" id="save-global-ai" type="button">Guardar y aplicar</button><button class="settings-action settings-action--ghost" id="clear-global-ai" type="button">Borrar</button></div>
+      <div class="settings-status" id="global-ai-status" role="status"></div>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="app-modal" aria-labelledby="modal-title">
+    <div class="modal__panel">
+      <button class="modal__close" type="button" aria-label="Cerrar ventana">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+      <div class="modal__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="4"/></svg>
+      </div>
+      <h2 id="modal-title">Aplicación</h2>
+      <p>Este módulo ya tiene su acceso preparado. Su funcionalidad se incorporará en la próxima etapa.</p>
+      <span class="modal__status">Pendiente de configuración</span>
+    </div>
+  </dialog>
+
+  <script src="assets/ai-client.js?v=20260917-7"></script>
+  <script>
+    // Interacción temporal de las tarjetas hasta conectar cada subaplicación.
+    const modal = document.querySelector('#app-modal');
+    const modalTitle = document.querySelector('#modal-title');
+    const closeButton = modal.querySelector('.modal__close');
+
+    const aiDialog = document.querySelector('#ai-settings-modal');
+    const aiButton = document.querySelector('#open-ai-settings');
+    const aiProvider = document.querySelector('#global-ai-provider');
+    const aiKey = document.querySelector('#global-ai-key');
+    const aiEndpoint = document.querySelector('#global-ai-endpoint');
+    const aiEndpointWrap = document.querySelector('#global-ai-endpoint-wrap');
+    const aiStatus = document.querySelector('#global-ai-status');
+    const aiConfig = () => ({provider:aiProvider.value,key:aiKey.value,endpoint:aiEndpoint.value});
+    const showAiStatus = (message,type='info') => { aiStatus.className=`settings-status settings-status--${type} is-visible`; aiStatus.textContent=message; };
+    const refreshAiBadge = () => {
+      const saved=SuiteAI.loadConfig(); aiButton.classList.toggle('is-configured',Boolean(saved));
+      aiButton.querySelector('.ai-settings-button__label').textContent=saved ? `IA: ${saved.provider === 'pollinations' ? 'Pollinations' : saved.provider}` : 'Configurar IA';
+    };
+    function refreshEndpoint(){ aiEndpointWrap.hidden=aiProvider.value!=='qwen'; }
+    const savedAi=SuiteAI.fillConfigFields(aiProvider,aiKey,aiEndpoint); refreshEndpoint(); refreshAiBadge();
+    document.querySelector('#remember-ai').checked=Boolean(savedAi && localStorage.getItem('suite-ai-config-persistent-v1'));
+    aiProvider.addEventListener('change',refreshEndpoint);
+    aiButton.addEventListener('click',()=>aiDialog.showModal());
+    document.querySelector('[data-close-ai]').addEventListener('click',()=>aiDialog.close());
+    aiDialog.addEventListener('click',event=>{if(event.target===aiDialog)aiDialog.close();});
+    document.querySelector('#test-global-ai').addEventListener('click',async event=>{const button=event.currentTarget;button.disabled=true;showAiStatus('Comprobando la credencial…');try{await SuiteAI.validate(aiConfig());showAiStatus('Conexión correcta. La clave fue aceptada.','success');}catch(error){showAiStatus(error.message,'error');}finally{button.disabled=false;}});
+    document.querySelector('#save-global-ai').addEventListener('click',async event=>{const button=event.currentTarget;button.disabled=true;showAiStatus('Comprobando y guardando…');try{await SuiteAI.validate(aiConfig());SuiteAI.saveConfig(aiConfig(),document.querySelector('#remember-ai').checked);refreshAiBadge();showAiStatus('Configuración guardada y aplicada a toda la suite.','success');}catch(error){showAiStatus(error.message,'error');}finally{button.disabled=false;}});
+    document.querySelector('#clear-global-ai').addEventListener('click',()=>{SuiteAI.clearConfig();aiKey.value='';aiEndpoint.value='';refreshAiBadge();showAiStatus('Configuración eliminada de este navegador.','info');});
+
+    document.querySelectorAll('.tool-card').forEach((card) => {
+      card.addEventListener('click', () => {
+        if (card.dataset.href) {
+          window.location.href = card.dataset.href;
+          return;
+        }
+        modalTitle.textContent = card.dataset.app;
+        modal.showModal();
+      });
+    });
+
+    closeButton.addEventListener('click', () => modal.close());
+
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) modal.close();
+    });
+
+    document.querySelector('#current-year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

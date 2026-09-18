@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a315e">
+  <title>Cotizador con Markup | Suite del Agente</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            sky: { 50:'#eaf5fc', 100:'#d3e9f7', 400:'#2b8bd3', 500:'#1763a6', 600:'#0a315e', 700:'#08294f' },
+            slate: { 50:'#f4f8fb', 800:'#15243a', 900:'#061b33' }
+          },
+          fontFamily: {
+            sans: ['Inter','ui-sans-serif','system-ui','-apple-system','BlinkMacSystemFont','Segoe UI','sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+  <!-- React & ReactDOM CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <!-- Babel Standalone CDN -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    :root { --suite-navy:#061b33; --suite-blue:#1763a6; --suite-coral:#ed6848; }
+    body {
+      background:
+        radial-gradient(circle at 90% 0, rgba(43,139,211,.10), transparent 28rem),
+        #f4f8fb !important;
+      -webkit-font-smoothing: antialiased;
+    }
+    input, select, textarea, button { font: inherit; }
+    ::selection { color:#fff; background:var(--suite-blue); }
+    @media print {
+      .print\:hidden { display: none !important; }
+      .print\:shadow-none { box-shadow: none !important; }
+      .print\:border-none { border: none !important; }
+      .print\:p-0 { padding: 0 !important; }
+      .print\:max-w-none { max-width: none !important; }
+      body { background: white !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans pb-12">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Componente auxiliar de Íconos SVG
+    const Icon = ({ name, className = "w-5 h-5" }) => {
+      const p = { className, fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", viewBox: "0 0 24 24" };
+      switch(name) {
+        case 'compass': return <svg {...p}><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>;
+        case 'plane': return <svg {...p}><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3.5c-.5-.5-2.5 0-4 1.5L13.5 8.5 5.3 6.7c-.8-.2-1.6.1-2.1.7l-.6.7c-.5.6-.4 1.5.2 2l5 4-3.5 3.5-2.3-.8c-.4-.1-.8 0-1.1.3l-.6.6c-.3.3-.3.8 0 1.1l2.5 2.5c.3.3.8.3 1.1 0l.6-.6c.3-.3.4-.7.3-1.1l-.8-2.3 3.5-3.5 4 5c.5.6 1.4.7 2 .2l.7-.6c.6-.5.9-1.3.7-2.1z"/></svg>;
+        case 'hotel': return <svg {...p}><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Z"/><path d="M9 16h6"/><path d="M9 12h6"/><path d="M9 8h6"/><path d="M10 22v-4h4v4"/></svg>;
+        case 'users': return <svg {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+        case 'calendar': return <svg {...p}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>;
+        case 'dollar': return <svg {...p}><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>;
+        case 'pin': return <svg {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>;
+        case 'plus': return <svg {...p}><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>;
+        case 'trash': return <svg {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
+        case 'printer': return <svg {...p}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>;
+        case 'bus': return <svg {...p}><path d="M8 6v6"/><path d="M16 6v6"/><path d="M2 12h20"/><path d="M18 18h2a1 1 0 0 0 1-1v-5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v5a1 1 0 0 0 1 1h2"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>;
+        case 'file': return <svg {...p}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>;
+        case 'check': return <svg {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
+        case 'percent': return <svg {...p}><line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>;
+        case 'user': return <svg {...p}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+        default: return null;
+      }
+    };
+
+    function App() {
+      const [activeTab, setActiveTab] = useState('editor');
+      const [currency, setCurrency] = useState('USD');
+      const [useAutoNetCalc, setUseAutoNetCalc] = useState(true);
+
+      const [quote, setQuote] = useState({
+        quoteNumber: 'COT-' + Math.floor(100000 + Math.random() * 900000),
+        createdDate: new Date().toISOString().split('T')[0],
+        clientName: 'Juan Pérez',
+        clientEmail: 'juan.perez@email.com',
+        clientPhone: '+54 9 11 4567 8900',
+        agencyAgent: 'Laura González',
+        destination: 'Punta Cana, República Dominicana',
+        checkIn: '2026-10-15',
+        checkOut: '2026-10-25',
+        nights: 10,
+        passengers: [
+          { id: 1, name: 'Juan Pérez', age: 38, type: 'Adulto' },
+          { id: 2, name: 'María Sola', age: 35, type: 'Adulto' },
+          { id: 3, name: 'Lucas Pérez', age: 7, type: 'Menor' }
+        ],
+        flights: [
+          {
+            id: 1,
+            type: 'Ida',
+            airline: 'Aerolíneas Argentinas',
+            flightNum: 'AR 1320',
+            origin: 'EZE (Buenos Aires)',
+            destination: 'PUJ (Punta Cana)',
+            departureDate: '2026-10-15',
+            departureTime: '08:00',
+            arrivalTime: '14:30',
+            cost: 1800
+          },
+          {
+            id: 2,
+            type: 'Vuelta',
+            airline: 'Aerolíneas Argentinas',
+            flightNum: 'AR 1321',
+            origin: 'PUJ (Punta Cana)',
+            destination: 'EZE (Buenos Aires)',
+            departureDate: '2026-10-25',
+            departureTime: '16:00',
+            arrivalTime: '00:30',
+            cost: 1800
+          }
+        ],
+        hotel: {
+          name: 'Grand Palladium Punta Cana Resort & Spa',
+          roomType: 'Junior Suite Garden View',
+          regime: 'All Inclusive',
+          costPerNight: 220,
+          totalCost: 2200
+        },
+        transfers: [
+          { id: 1, description: 'Traslado privado Aeropuerto (PUJ) - Hotel - Aeropuerto', cost: 120 }
+        ],
+        excursions: [
+          { id: 1, name: 'Excursión en Catamarán a Isla Saona con Almuerzo', passengersCount: 3, costPerPerson: 90, totalCost: 270 },
+          { id: 2, name: 'Entrada y Tour en Scape Park Hoyo Azul', passengersCount: 3, costPerPerson: 110, totalCost: 330 }
+        ],
+        manualNetPrice: 6520,
+        markupPercentage: 15,
+        taxesAndFees: 200,
+        notes: 'Cotización sujeta a disponibilidad al momento de confirmar la reserva. Tarifas sujetas a modificación sin previo aviso. Incluye asistencia al viajero y equipaje de mano + despachado.'
+      });
+
+      // Cálculo automático de noches
+      useEffect(() => {
+        if (quote.checkIn && quote.checkOut) {
+          const start = new Date(quote.checkIn);
+          const end = new Date(quote.checkOut);
+          const diffTime = end.getTime() - start.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          if (!isNaN(diffDays) && diffDays >= 0) {
+            setQuote(prev => ({
+              ...prev,
+              nights: diffDays,
+              hotel: {
+                ...prev.hotel,
+                totalCost: prev.hotel.costPerNight * diffDays
+              }
+            }));
+          }
+        }
+      }, [quote.checkIn, quote.checkOut]);
+
+      const calculatedNetCost = () => {
+        const flightsTotal = quote.flights.reduce((acc, f) => acc + (Number(f.cost) || 0), 0);
+        const hotelTotal = Number(quote.hotel.totalCost) || 0;
+        const transfersTotal = quote.transfers.reduce((acc, t) => acc + (Number(t.cost) || 0), 0);
+        const excursionsTotal = quote.excursions.reduce((acc, e) => acc + (Number(e.totalCost) || 0), 0);
+
+        return flightsTotal + hotelTotal + transfersTotal + excursionsTotal;
+      };
+
+      const currentNetPrice = useAutoNetCalc ? calculatedNetCost() : (Number(quote.manualNetPrice) || 0);
+      const markupAmount = (currentNetPrice * (Number(quote.markupPercentage) || 0)) / 100;
+      const finalPrice = currentNetPrice + markupAmount + (Number(quote.taxesAndFees) || 0);
+      const pricePerPerson = quote.passengers.length > 0 ? finalPrice / quote.passengers.length : finalPrice;
+      const currSymbol = currency === 'USD' ? 'US$' : 'AR$';
+
+      const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setQuote(prev => ({ ...prev, [name]: value }));
+      };
+
+      const handleHotelChange = (e) => {
+        const { name, value } = e.target;
+        setQuote(prev => {
+          const updatedHotel = { ...prev.hotel, [name]: value };
+          if (name === 'costPerNight') {
+            updatedHotel.totalCost = (Number(value) || 0) * prev.nights;
+          }
+          return { ...prev, hotel: updatedHotel };
+        });
+      };
+
+      // Pasajeros
+      const addPassenger = () => {
+        const newId = Date.now();
+        setQuote(prev => ({
+          ...prev,
+          passengers: [...prev.passengers, { id: newId, name: '', age: 30, type: 'Adulto' }]
+        }));
+      };
+
+      const removePassenger = (id) => {
+        setQuote(prev => ({
+          ...prev,
+          passengers: prev.passengers.filter(p => p.id !== id)
+        }));
+      };
+
+      const updatePassenger = (id, field, value) => {
+        setQuote(prev => ({
+          ...prev,
+          passengers: prev.passengers.map(p => {
+            if (p.id === id) {
+              const updated = { ...p, [field]: value };
+              if (field === 'age') {
+                updated.type = Number(value) < 12 ? (Number(value) < 2 ? 'Infante' : 'Menor') : 'Adulto';
+              }
+              return updated;
+            }
+            return p;
+          })
+        }));
+      };
+
+      // Vuelos
+      const addFlight = () => {
+        const newId = Date.now();
+        setQuote(prev => ({
+          ...prev,
+          flights: [
+            ...prev.flights,
+            {
+              id: newId,
+              type: 'Ida',
+              airline: 'Aerolíneas Argentinas',
+              flightNum: 'AR 0000',
+              origin: '',
+              destination: '',
+              departureDate: quote.checkIn,
+              departureTime: '12:00',
+              arrivalTime: '18:00',
+              cost: 0
+            }
+          ]
+        }));
+      };
+
+      const removeFlight = (id) => {
+        setQuote(prev => ({
+          ...prev,
+          flights: prev.flights.filter(f => f.id !== id)
+        }));
+      };
+
+      const updateFlight = (id, field, value) => {
+        setQuote(prev => ({
+          ...prev,
+          flights: prev.flights.map(f => f.id === id ? { ...f, [field]: value } : f)
+        }));
+      };
+
+      // Excursiones
+      const addExcursion = () => {
+        const newId = Date.now();
+        setQuote(prev => ({
+          ...prev,
+          excursions: [
+            ...prev.excursions,
+            { id: newId, name: '', passengersCount: prev.passengers.length || 1, costPerPerson: 50, totalCost: (prev.passengers.length || 1) * 50 }
+          ]
+        }));
+      };
+
+      const removeExcursion = (id) => {
+        setQuote(prev => ({
+          ...prev,
+          excursions: prev.excursions.filter(e => e.id !== id)
+        }));
+      };
+
+      const updateExcursion = (id, field, value) => {
+        setQuote(prev => ({
+          ...prev,
+          excursions: prev.excursions.map(e => {
+            if (e.id === id) {
+              const updated = { ...e, [field]: value };
+              if (field === 'costPerPerson' || field === 'passengersCount') {
+                const count = field === 'passengersCount' ? Number(value) : Number(e.passengersCount);
+                const cost = field === 'costPerPerson' ? Number(value) : Number(e.costPerPerson);
+                updated.totalCost = count * cost;
+              }
+              return updated;
+            }
+            return e;
+          })
+        }));
+      };
+
+      // Traslados
+      const addTransfer = () => {
+        const newId = Date.now();
+        setQuote(prev => ({
+          ...prev,
+          transfers: [...prev.transfers, { id: newId, description: '', cost: 50 }]
+        }));
+      };
+
+      const removeTransfer = (id) => {
+        setQuote(prev => ({
+          ...prev,
+          transfers: prev.transfers.filter(t => t.id !== id)
+        }));
+      };
+
+      const updateTransfer = (id, field, value) => {
+        setQuote(prev => ({
+          ...prev,
+          transfers: prev.transfers.map(t => t.id === id ? { ...t, [field]: value } : t)
+        }));
+      };
+
+      const handlePrint = () => {
+        window.print();
+      };
+
+      return (
+        <div>
+          {/* HEADER */}
+          <header className="bg-slate-900 text-white sticky top-0 z-40 shadow-md print:hidden border-b border-white/10">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <a href="../index.html" className="bg-white px-3 py-2 rounded-xl shadow-lg" aria-label="Volver a la Suite del Agente">
+                  <img src="../logo.png" alt="Tresor Travel" className="h-7 w-auto" />
+                </a>
+                <div>
+                  <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+                    Cotizador con Markup
+                  </h1>
+                  <p className="text-xs text-slate-400">Suite del Agente de Viajes</p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2 sm:space-x-4">
+                <a href="../index.html" className="hidden lg:inline-flex text-xs font-semibold text-slate-300 hover:text-white transition">← Volver a la suite</a>
+                <div className="bg-slate-800 border border-slate-700 rounded-lg p-1 flex items-center text-xs font-semibold">
+                  <button 
+                    onClick={() => setCurrency('USD')}
+                    className={`px-3 py-1.5 rounded-md transition ${currency === 'USD' ? 'bg-sky-500 text-white' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    USD ($)
+                  </button>
+                  <button 
+                    onClick={() => setCurrency('ARS')}
+                    className={`px-3 py-1.5 rounded-md transition ${currency === 'ARS' ? 'bg-sky-500 text-white' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    ARS ($)
+                  </button>
+                </div>
+
+                <div className="bg-slate-800 border border-slate-700 rounded-lg p-1 flex items-center text-sm font-medium">
+                  <button
+                    onClick={() => setActiveTab('editor')}
+                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-md transition ${
+                      activeTab === 'editor' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Icon name="file" className="w-4 h-4" />
+                    <span className="hidden sm:inline">Formulario</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('preview')}
+                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-md transition ${
+                      activeTab === 'preview' ? 'bg-sky-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Icon name="printer" className="w-4 h-4" />
+                    <span className="hidden sm:inline">Vista Previa PDF</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+            {activeTab === 'editor' ? (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                {/* LEFT FORM */}
+                <div className="lg:col-span-8 space-y-6">
+                  
+                  {/* CLIENT */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <div className="flex items-center space-x-2 border-b border-slate-100 pb-4 mb-4">
+                      <Icon name="user" className="w-5 h-5 text-sky-500" />
+                      <h2 className="text-lg font-bold text-slate-800">1. Datos del Cliente y Cotización</h2>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Nombre del Pasajero / Cliente</label>
+                        <input 
+                          type="text" 
+                          name="clientName" 
+                          value={quote.clientName} 
+                          onChange={handleInputChange} 
+                          placeholder="Ej: Juan Pérez"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Teléfono / WhatsApp</label>
+                        <input 
+                          type="text" 
+                          name="clientPhone" 
+                          value={quote.clientPhone} 
+                          onChange={handleInputChange} 
+                          placeholder="+54 9 11 1234 5678"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Correo Electrónico</label>
+                        <input 
+                          type="email" 
+                          name="clientEmail" 
+                          value={quote.clientEmail} 
+                          onChange={handleInputChange} 
+                          placeholder="ejemplo@email.com"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Agente de Viajes</label>
+                        <input 
+                          type="text" 
+                          name="agencyAgent" 
+                          value={quote.agencyAgent} 
+                          onChange={handleInputChange} 
+                          placeholder="Nombre del Asesor"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* DESTINATION */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <div className="flex items-center space-x-2 border-b border-slate-100 pb-4 mb-4">
+                      <Icon name="pin" className="w-5 h-5 text-sky-500" />
+                      <h2 className="text-lg font-bold text-slate-800">2. Destino y Fechas del Viaje</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Destino de viaje</label>
+                        <input 
+                          type="text" 
+                          name="destination" 
+                          value={quote.destination} 
+                          onChange={handleInputChange} 
+                          placeholder="Ej: Punta Cana, República Dominicana"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Fecha IN (Check-In)</label>
+                        <input 
+                          type="date" 
+                          name="checkIn" 
+                          value={quote.checkIn} 
+                          onChange={handleInputChange} 
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Fecha OUT (Check-Out)</label>
+                        <input 
+                          type="date" 
+                          name="checkOut" 
+                          value={quote.checkOut} 
+                          onChange={handleInputChange} 
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">
+                          Cantidad de Noches <span className="text-xs text-sky-600 font-normal">(Auto-calculado)</span>
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <input 
+                            type="number" 
+                            name="nights" 
+                            value={quote.nights} 
+                            onChange={handleInputChange} 
+                            min="1"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-semibold text-sky-700 bg-sky-50/50 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                          />
+                          <span className="text-sm font-medium text-slate-500">noches</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PASSENGERS */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                      <div className="flex items-center space-x-2">
+                        <Icon name="users" className="w-5 h-5 text-sky-500" />
+                        <h2 className="text-lg font-bold text-slate-800">3. Pasajeros ({quote.passengers.length})</h2>
+                      </div>
+                      <button 
+                        onClick={addPassenger}
+                        className="flex items-center space-x-1 text-xs font-semibold text-sky-600 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-lg transition"
+                      >
+                        <Icon name="plus" className="w-4 h-4" />
+                        <span>Agregar Pasajero</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {quote.passengers.map((p, index) => (
+                        <div key={p.id} className="flex flex-wrap sm:flex-nowrap items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                          <span className="text-xs font-bold bg-slate-200 text-slate-700 rounded-full w-6 h-6 flex items-center justify-center shrink-0">
+                            {index + 1}
+                          </span>
+                          <input 
+                            type="text" 
+                            placeholder="Nombre completo" 
+                            value={p.name}
+                            onChange={(e) => updatePassenger(p.id, 'name', e.target.value)}
+                            className="flex-1 min-w-[140px] px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+                          />
+                          <div className="flex items-center space-x-2 shrink-0">
+                            <span className="text-xs text-slate-500 font-medium">Edad:</span>
+                            <input 
+                              type="number" 
+                              value={p.age}
+                              onChange={(e) => updatePassenger(p.id, 'age', e.target.value)}
+                              className="w-16 px-2 py-1.5 border border-slate-300 rounded-lg text-sm bg-white text-center"
+                              min="0"
+                            />
+                          </div>
+                          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold shrink-0 ${
+                            p.type === 'Adulto' ? 'bg-blue-100 text-blue-700' :
+                            p.type === 'Menor' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'
+                          }`}>
+                            {p.type}
+                          </span>
+                          <button 
+                            onClick={() => removePassenger(p.id)}
+                            disabled={quote.passengers.length <= 1}
+                            className="text-slate-400 hover:text-red-500 p-1 rounded-lg transition disabled:opacity-30 shrink-0 ml-auto"
+                          >
+                            <Icon name="trash" className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* FLIGHTS */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                      <div className="flex items-center space-x-2">
+                        <Icon name="plane" className="w-5 h-5 text-sky-500" />
+                        <h2 className="text-lg font-bold text-slate-800">4. Vuelos</h2>
+                      </div>
+                      <button 
+                        onClick={addFlight}
+                        className="flex items-center space-x-1 text-xs font-semibold text-sky-600 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-lg transition"
+                      >
+                        <Icon name="plus" className="w-4 h-4" />
+                        <span>Agregar Tramo</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {quote.flights.map((f) => (
+                        <div key={f.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <select 
+                              value={f.type} 
+                              onChange={(e) => updateFlight(f.id, 'type', e.target.value)}
+                              className="bg-white border border-slate-300 text-xs font-bold rounded-lg px-2.5 py-1 text-sky-700"
+                            >
+                              <option value="Ida">Ida</option>
+                              <option value="Vuelta">Vuelta</option>
+                              <option value="Interno">Tramo Interno</option>
+                            </select>
+                            <button onClick={() => removeFlight(f.id)} className="text-slate-400 hover:text-red-500 p-1">
+                              <Icon name="trash" className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-0.5">Compañía Aérea</label>
+                              <input 
+                                type="text" 
+                                value={f.airline}
+                                onChange={(e) => updateFlight(f.id, 'airline', e.target.value)}
+                                className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-0.5">N° de Vuelo</label>
+                              <input 
+                                type="text" 
+                                value={f.flightNum}
+                                onChange={(e) => updateFlight(f.id, 'flightNum', e.target.value)}
+                                className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-0.5">Costo Neto ({currSymbol})</label>
+                              <input 
+                                type="number" 
+                                value={f.cost}
+                                onChange={(e) => updateFlight(f.id, 'cost', e.target.value)}
+                                className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-0.5">Origen</label>
+                              <input 
+                                type="text" 
+                                value={f.origin}
+                                onChange={(e) => updateFlight(f.id, 'origin', e.target.value)}
+                                className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-0.5">Destino</label>
+                              <input 
+                                type="text" 
+                                value={f.destination}
+                                onChange={(e) => updateFlight(f.id, 'destination', e.target.value)}
+                                className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-0.5">Fecha Salida</label>
+                              <input 
+                                type="date" 
+                                value={f.departureDate}
+                                onChange={(e) => updateFlight(f.id, 'departureDate', e.target.value)}
+                                className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* HOTEL */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <div className="flex items-center space-x-2 border-b border-slate-100 pb-4 mb-4">
+                      <Icon name="hotel" className="w-5 h-5 text-sky-500" />
+                      <h2 className="text-lg font-bold text-slate-800">5. Alojamiento / Hotel</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Nombre del Hotel</label>
+                        <input 
+                          type="text" 
+                          name="name" 
+                          value={quote.hotel.name} 
+                          onChange={handleHotelChange} 
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Tipo de Habitación</label>
+                        <input 
+                          type="text" 
+                          name="roomType" 
+                          value={quote.hotel.roomType} 
+                          onChange={handleHotelChange} 
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Régimen</label>
+                        <select 
+                          name="regime" 
+                          value={quote.hotel.regime} 
+                          onChange={handleHotelChange} 
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+                        >
+                          <option value="All Inclusive">All Inclusive (Todo Incluido)</option>
+                          <option value="Desayuno Incluido">Desayuno Incluido</option>
+                          <option value="Media Pensión">Media Pensión (Desayuno + Cenas)</option>
+                          <option value="Pensión Completa">Pensión Completa (Sin bebidas)</option>
+                          <option value="Solo Habitación">Solo Habitación (Sin Comidas)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Costo Neto x Noche ({currSymbol})</label>
+                        <input 
+                          type="number" 
+                          name="costPerNight" 
+                          value={quote.hotel.costPerNight} 
+                          onChange={handleHotelChange} 
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Costo Total Hotel ({currSymbol})</label>
+                        <input 
+                          type="number" 
+                          name="totalCost" 
+                          value={quote.hotel.totalCost} 
+                          onChange={handleHotelChange} 
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50 font-semibold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* TRANSFERS & EXCURSIONS */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
+                    <div>
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                        <div className="flex items-center space-x-2">
+                          <Icon name="bus" className="w-5 h-5 text-sky-500" />
+                          <h3 className="text-md font-bold text-slate-800">6. Traslados</h3>
+                        </div>
+                        <button onClick={addTransfer} className="flex items-center space-x-1 text-xs font-semibold text-sky-600 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-lg">
+                          <Icon name="plus" className="w-4 h-4" />
+                          <span>Agregar Traslado</span>
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        {quote.transfers.map((t) => (
+                          <div key={t.id} className="flex items-center space-x-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <input 
+                              type="text" 
+                              value={t.description}
+                              onChange={(e) => updateTransfer(t.id, 'description', e.target.value)}
+                              className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+                            />
+                            <div className="flex items-center space-x-1 w-32 shrink-0">
+                              <span className="text-xs text-slate-400">{currSymbol}</span>
+                              <input 
+                                type="number" 
+                                value={t.cost}
+                                onChange={(e) => updateTransfer(t.id, 'cost', e.target.value)}
+                                className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+                              />
+                            </div>
+                            <button onClick={() => removeTransfer(t.id)} className="text-slate-400 hover:text-red-500 p-1">
+                              <Icon name="trash" className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                        <div className="flex items-center space-x-2">
+                          <Icon name="compass" className="w-5 h-5 text-sky-500" />
+                          <h3 className="text-md font-bold text-slate-800">7. Excursiones y Adicionales</h3>
+                        </div>
+                        <button onClick={addExcursion} className="flex items-center space-x-1 text-xs font-semibold text-sky-600 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-lg">
+                          <Icon name="plus" className="w-4 h-4" />
+                          <span>Agregar Excursión</span>
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {quote.excursions.map((e) => (
+                          <div key={e.id} className="flex flex-wrap sm:flex-nowrap items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <input 
+                              type="text" 
+                              value={e.name}
+                              onChange={(ev) => updateExcursion(e.id, 'name', ev.target.value)}
+                              className="flex-1 min-w-[180px] px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+                            />
+                            <div className="flex items-center space-x-2 shrink-0">
+                              <span className="text-xs text-slate-500">Pax:</span>
+                              <input 
+                                type="number" 
+                                value={e.passengersCount}
+                                onChange={(ev) => updateExcursion(e.id, 'passengersCount', ev.target.value)}
+                                className="w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm bg-white text-center"
+                              />
+                            </div>
+                            <div className="flex items-center space-x-1 w-28 shrink-0">
+                              <span className="text-xs text-slate-400">{currSymbol}/pax</span>
+                              <input 
+                                type="number" 
+                                value={e.costPerPerson}
+                                onChange={(ev) => updateExcursion(e.id, 'costPerPerson', ev.target.value)}
+                                className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+                              />
+                            </div>
+                            <span className="text-xs font-bold text-slate-700 shrink-0 min-w-[70px]">
+                              = {currSymbol} {e.totalCost}
+                            </span>
+                            <button onClick={() => removeExcursion(e.id)} className="text-slate-400 hover:text-red-500 p-1 shrink-0">
+                              <Icon name="trash" className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* FINANCIALS */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <div className="flex items-center space-x-2 border-b border-slate-100 pb-4 mb-4">
+                      <Icon name="dollar" className="w-5 h-5 text-emerald-500" />
+                      <h2 className="text-lg font-bold text-slate-800">8. Precios, Markup y Condiciones</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="sm:col-span-2 lg:col-span-3 bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div>
+                          <span className="text-sm font-bold text-slate-800">Modo de cálculo del Costo Neto</span>
+                          <p className="text-xs text-slate-500">Sumar costos automáticamente o ingresar monto global.</p>
+                        </div>
+                        <div className="flex items-center space-x-3 bg-white p-1 rounded-lg border border-slate-200 text-xs font-semibold">
+                          <button 
+                            onClick={() => setUseAutoNetCalc(true)}
+                            className={`px-3 py-1.5 rounded-md transition ${useAutoNetCalc ? 'bg-emerald-500 text-white' : 'text-slate-600'}`}
+                          >
+                            Suma Automática
+                          </button>
+                          <button 
+                            onClick={() => setUseAutoNetCalc(false)}
+                            className={`px-3 py-1.5 rounded-md transition ${!useAutoNetCalc ? 'bg-emerald-500 text-white' : 'text-slate-600'}`}
+                          >
+                            Manual Global
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Precio Neto Total ({currSymbol})</label>
+                        <input 
+                          type="number" 
+                          name="manualNetPrice" 
+                          value={useAutoNetCalc ? calculatedNetCost() : quote.manualNetPrice} 
+                          onChange={handleInputChange} 
+                          disabled={useAutoNetCalc}
+                          className={`w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold ${
+                            useAutoNetCalc ? 'bg-slate-100 text-slate-600' : 'bg-white text-slate-900'
+                          }`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Markup / Ganancia (%)</label>
+                        <input 
+                          type="number" 
+                          name="markupPercentage" 
+                          value={quote.markupPercentage} 
+                          onChange={handleInputChange} 
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-emerald-600"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Impuestos / Fee Gestión ({currSymbol})</label>
+                        <input 
+                          type="number" 
+                          name="taxesAndFees" 
+                          value={quote.taxesAndFees} 
+                          onChange={handleInputChange} 
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2 lg:col-span-3">
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Notas aclaratorias / Términos</label>
+                        <textarea 
+                          name="notes" 
+                          rows="3"
+                          value={quote.notes} 
+                          onChange={handleInputChange} 
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+                        ></textarea>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* SUMMARY SIDEBAR */}
+                <div className="lg:col-span-4">
+                  <div className="bg-slate-900 text-white rounded-2xl shadow-xl p-6 sticky top-20 border border-slate-800 space-y-6">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                      <span className="text-xs font-semibold text-sky-400 uppercase tracking-wider">Resumen Ejecutivo</span>
+                      <span className="text-xs bg-slate-800 px-2.5 py-1 rounded-md text-slate-300">{quote.quoteNumber}</span>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-slate-800 to-slate-800/60 p-5 rounded-2xl border border-slate-700/60 space-y-3">
+                      <div>
+                        <span className="text-xs text-slate-400 font-medium block">PRECIO FINAL AL PASAJERO</span>
+                        <div className="text-3xl font-extrabold text-sky-400 tracking-tight mt-0.5">
+                          {currSymbol} {finalPrice.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-700/50 flex justify-between items-center text-xs">
+                        <span className="text-slate-400">Por Pasajero ({quote.passengers.length}):</span>
+                        <span className="font-bold text-white">{currSymbol} {pricePerPerson.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2.5 text-xs">
+                      <div className="flex justify-between text-slate-400">
+                        <span>Costo Neto:</span>
+                        <span className="font-mono text-slate-200">{currSymbol} {currentNetPrice.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-400">
+                        <span>Comisión ({quote.markupPercentage}%):</span>
+                        <span className="font-mono text-emerald-400">+{currSymbol} {markupAmount.toLocaleString()}</span>
+                      </div>
+                      {Number(quote.taxesAndFees) > 0 && (
+                        <div className="flex justify-between text-slate-400">
+                          <span>Impuestos / Gastos:</span>
+                          <span className="font-mono text-slate-200">+{currSymbol} {Number(quote.taxesAndFees).toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <button 
+                      onClick={() => setActiveTab('preview')}
+                      className="w-full bg-sky-500 hover:bg-sky-400 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition flex items-center justify-center space-x-2 text-sm"
+                    >
+                      <Icon name="printer" className="w-4 h-4" />
+                      <span>Generar Cotización PDF</span>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            ) : (
+              /* PREVIEW */
+              <div className="space-y-6">
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4 print:hidden">
+                  <button 
+                    onClick={() => setActiveTab('editor')}
+                    className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition"
+                  >
+                    ← Volver al Formulario
+                  </button>
+
+                  <div className="flex items-center space-x-3">
+                    <span className="text-xs text-slate-500">Usa el botón para guardar como <strong>PDF</strong></span>
+                    <button 
+                      onClick={handlePrint}
+                      className="bg-sky-600 hover:bg-sky-500 text-white font-bold px-4 py-2 rounded-xl text-sm shadow flex items-center space-x-2 transition"
+                    >
+                      <Icon name="printer" className="w-4 h-4" />
+                      <span>Imprimir / Descargar PDF</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* VOUCHER CARD */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-4xl mx-auto p-8 sm:p-12 print:shadow-none print:border-none print:p-0 print:max-w-none text-slate-800">
+                  <div className="flex justify-between items-start border-b border-slate-200 pb-6">
+                    <div>
+                      <img src="../logo.png" alt="Tresor Travel" className="h-10 w-auto object-contain" />
+                      <p className="text-xs text-slate-500 mt-1">Legajo 15705</p>
+                      {quote.agencyAgent && <p className="text-xs text-slate-500">Asesor: {quote.agencyAgent}</p>}
+                    </div>
+
+                    <div className="text-right">
+                      <div className="inline-block bg-sky-50 text-sky-700 px-3 py-1 rounded-lg text-xs font-bold mb-2">
+                        COTIZACIÓN DE VIAJE
+                      </div>
+                      <div className="text-xs text-slate-500">N°: <span className="font-semibold text-slate-800">{quote.quoteNumber}</span></div>
+                      <div className="text-xs text-slate-500">Fecha: <span className="font-semibold text-slate-800">{quote.createdDate}</span></div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6 my-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div>
+                      <span className="text-xs font-semibold text-slate-400 block uppercase">Pasajero Principal</span>
+                      <div className="text-sm font-bold text-slate-800 mt-0.5">{quote.clientName}</div>
+                      <div className="text-xs text-slate-600">{quote.clientPhone}</div>
+                      <div className="text-xs text-slate-600">{quote.clientEmail}</div>
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-slate-400 block uppercase">Detalles del Destino</span>
+                      <div className="text-sm font-bold text-sky-700 mt-0.5">{quote.destination}</div>
+                      <div className="text-xs text-slate-600 font-medium">{quote.checkIn} al {quote.checkOut} ({quote.nights} noches)</div>
+                      <div className="text-xs text-slate-600">{quote.passengers.length} Pasajero(s)</div>
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Pasajeros del Grupo</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {quote.passengers.map((p, idx) => (
+                        <span key={p.id} className="text-xs bg-slate-100 border border-slate-200 px-3 py-1 rounded-full text-slate-700 font-medium">
+                          {idx + 1}. {p.name || 'Pasajero'} ({p.age} años - {p.type})
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-6 my-8">
+                    {quote.flights.length > 0 && (
+                      <div>
+                        <div className="flex items-center space-x-2 border-b border-slate-200 pb-2 mb-3">
+                          <Icon name="plane" className="w-4 h-4 text-sky-600" />
+                          <h3 className="text-sm font-bold uppercase tracking-wide text-slate-800">Itinerario de Vuelos</h3>
+                        </div>
+                        <div className="space-y-2">
+                          {quote.flights.map((f) => (
+                            <div key={f.id} className="flex justify-between items-center text-xs p-3 bg-slate-50 rounded-lg border border-slate-100">
+                              <div>
+                                <span className="font-bold text-slate-800 mr-2">[{f.type}] {f.airline} - {f.flightNum}</span>
+                                <span className="text-slate-600">{f.origin} → {f.destination}</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="font-semibold text-slate-700">{f.departureDate}</span>
+                                <span className="text-slate-500 ml-2">{f.departureTime} hs</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {quote.hotel.name && (
+                      <div>
+                        <div className="flex items-center space-x-2 border-b border-slate-200 pb-2 mb-3">
+                          <Icon name="hotel" className="w-4 h-4 text-sky-600" />
+                          <h3 className="text-sm font-bold uppercase tracking-wide text-slate-800">Alojamiento</h3>
+                        </div>
+                        <div className="p-4 bg-sky-50/50 rounded-xl border border-sky-100 flex justify-between items-center text-xs">
+                          <div>
+                            <div className="text-sm font-bold text-slate-900">{quote.hotel.name}</div>
+                            <div className="text-slate-600 mt-0.5">{quote.hotel.roomType}</div>
+                          </div>
+                          <div className="text-right">
+                            <span className="inline-block bg-sky-600 text-white font-bold px-2.5 py-1 rounded-md">
+                              {quote.hotel.regime}
+                            </span>
+                            <div className="text-slate-500 mt-1">{quote.nights} Noches incluidas</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {(quote.transfers.length > 0 || quote.excursions.length > 0) && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {quote.transfers.length > 0 && (
+                          <div>
+                            <div className="flex items-center space-x-2 border-b border-slate-200 pb-2 mb-3">
+                              <Icon name="bus" className="w-4 h-4 text-sky-600" />
+                              <h3 className="text-xs font-bold uppercase tracking-wide text-slate-800">Traslados</h3>
+                            </div>
+                            <ul className="text-xs space-y-1.5 text-slate-600">
+                              {quote.transfers.map(t => (
+                                <li key={t.id} className="flex items-center space-x-1.5">
+                                  <Icon name="check" className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                  <span>{t.description}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {quote.excursions.length > 0 && (
+                          <div>
+                            <div className="flex items-center space-x-2 border-b border-slate-200 pb-2 mb-3">
+                              <Icon name="compass" className="w-4 h-4 text-sky-600" />
+                              <h3 className="text-xs font-bold uppercase tracking-wide text-slate-800">Excursiones & Tours</h3>
+                            </div>
+                            <ul className="text-xs space-y-1.5 text-slate-600">
+                              {quote.excursions.map(e => (
+                                <li key={e.id} className="flex items-center space-x-1.5">
+                                  <Icon name="check" className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                  <span>{e.name}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-slate-900 text-white p-6 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 my-6">
+                    <div>
+                      <span className="text-xs text-sky-400 font-semibold uppercase tracking-wider block">PRECIO TOTAL DEL PAQUETE</span>
+                      <p className="text-xs text-slate-400">Incluye todos los servicios, tasas e impuestos mencionados.</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-extrabold text-sky-400">
+                        {currSymbol} {finalPrice.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                      </div>
+                      <span className="text-xs text-slate-300">
+                        ({currSymbol} {pricePerPerson.toLocaleString('es-AR', { maximumFractionDigits: 0 })} por persona)
+                      </span>
+                    </div>
+                  </div>
+
+                  {quote.notes && (
+                    <div className="border-t border-slate-200 pt-4">
+                      <h5 className="text-xs font-bold uppercase text-slate-400 mb-1">Notas y Condiciones Generales</h5>
+                      <p className="text-xs text-slate-500 leading-relaxed whitespace-pre-line">{quote.notes}</p>
+                    </div>
+                  )}
+
+                  <div className="mt-8 pt-4 border-t border-slate-100 text-center text-xs text-slate-400">
+                    ¡Gracias por confiar en Tresor Travel para planificar tus próximas vacaciones!
+                  </div>
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

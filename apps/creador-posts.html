@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a315e">
+  <title>Creador de Posts | Suite del Agente</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230a315e'/%3E%3Cpath d='M13 35.5 49 17c2.2-1.1 4.4 1.4 2.9 3.3L38 38l4 11-5 3-7-10-9 5-4-4 8-8-10 4z' fill='%23ed6848'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="../assets/subapps.css">
+</head>
+<body>
+  <header class="topbar"><div class="shell topbar__inner">
+    <a class="brand" href="../index.html"><img src="../logo.png" alt="Tresor Travel"></a>
+    <a class="back-link" href="../index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Volver a la suite</a>
+  </div></header>
+
+  <main class="app-main"><div class="shell">
+    <div class="app-intro">
+      <p class="eyebrow">Contenido promocional</p>
+      <h1>Creador de Posts</h1>
+      <p>Diseña un flyer vertical listo para WhatsApp y redes sociales, usando un fondo incluido, una imagen propia o una imagen creada por IA.</p>
+    </div>
+
+    <div class="workspace">
+      <section class="panel">
+        <div class="panel__header"><h2>Datos de la promoción</h2><p>La vista previa se actualiza automáticamente.</p></div>
+        <div class="panel__body">
+          <div class="field"><label for="destination">Destino</label><input id="destination" value="Punta Cana" placeholder="Ej.: Punta Cana"></div>
+          <div class="field-row">
+            <div class="field"><label for="date-from">Fecha desde</label><input id="date-from" type="date"></div>
+            <div class="field"><label for="date-to">Fecha hasta</label><input id="date-to" type="date"></div>
+          </div>
+          <div class="field-row--3 field-row">
+            <div class="field"><label for="price">Precio por persona</label><input id="price" type="number" min="0" value="1890"></div>
+            <div class="field"><label for="currency">Moneda</label><select id="currency"><option>USD</option><option>ARS</option><option>EUR</option></select></div>
+            <div class="field"><label for="nights">Noches</label><input id="nights" type="number" min="1" value="7"></div>
+          </div>
+          <div class="field"><label for="meal">Régimen</label><select id="meal"><option>Desayuno</option><option>Media Pensión</option><option>Pensión Completa</option><option selected>All Inclusive</option><option>Sin Régimen</option></select></div>
+
+          <div class="field">
+            <span class="field-label">El viaje incluye</span>
+            <div class="check-grid" id="includes">
+              <label class="check-pill"><input type="checkbox" value="Aéreos" checked>Aéreos</label>
+              <label class="check-pill"><input type="checkbox" value="Traslados" checked>Traslados</label>
+              <label class="check-pill"><input type="checkbox" value="Asistencia médica" checked>Asistencia médica</label>
+              <label class="check-pill"><input type="checkbox" value="Hotel" checked>Hotel</label>
+              <label class="check-pill"><input type="checkbox" value="Excursiones">Excursiones</label>
+            </div>
+          </div>
+          <div class="field"><label for="extra">Información adicional</label><textarea id="extra" placeholder="Ej.: cupos limitados, equipaje incluido...">Cupos limitados. Consultá por financiación.</textarea></div>
+          <div class="field-row">
+            <div class="field"><label for="email">Mail para reservar</label><input id="email" type="email" value="reservas@tresortravel.com"></div>
+            <div class="field"><label for="phone">Teléfono para reservar</label><input id="phone" type="tel" placeholder="+54 9 11..." value="+54 9 11 5555 5555"></div>
+          </div>
+
+          <div class="field">
+            <span class="field-label">Imagen de fondo</span>
+            <div class="background-grid" id="background-grid">
+              <button class="background-option is-selected" type="button" data-src="../assets/backgrounds/playa.png"><img src="../assets/backgrounds/playa.png" alt="Playa tropical"><span>Playa</span></button>
+              <button class="background-option" type="button" data-src="../assets/backgrounds/europa.png"><img src="../assets/backgrounds/europa.png" alt="Ciudad europea"><span>Europa</span></button>
+              <button class="background-option" type="button" data-src="../assets/backgrounds/ciudad.png"><img src="../assets/backgrounds/ciudad.png" alt="Ciudad moderna"><span>Ciudad</span></button>
+              <label class="background-option upload-option" for="custom-background">＋<br>Subir imagen<input id="custom-background" type="file" accept="image/*" hidden></label>
+            </div>
+          </div>
+
+          <details class="api-box">
+            <summary>Generar fondo con inteligencia artificial</summary>
+            <div class="api-box__content">
+              <p class="key-note">La configuración guardada en la portada se aplica automáticamente. También puedes reemplazarla aquí. Gemini requiere facturación para imágenes; Pollinations admite texto e imágenes con una misma clave.</p>
+              <div class="field-row" style="margin-top:14px">
+                <div class="field"><label for="provider">Proveedor</label><select id="provider"><option value="gemini">Google Gemini</option><option value="pollinations">Pollinations</option><option value="openai">OpenAI / ChatGPT</option><option value="qwen">Qwen / DashScope</option></select></div>
+                <div class="field"><label for="api-key">API key</label><input id="api-key" type="password" autocomplete="off" placeholder="Pegar clave sin comillas"></div>
+              </div>
+              <div class="field" id="endpoint-field" hidden><label for="api-endpoint">Endpoint de Qwen</label><input id="api-endpoint" placeholder="https://{workspace}.{region}.maas.aliyuncs.com/api/v1/services/aigc/image-generation/generation"><p class="hint">Qwen requiere el endpoint correspondiente al workspace y región de Model Studio.</p></div>
+              <div class="button-row"><button class="btn btn--secondary" id="test-key" type="button">Probar conexión</button><button class="btn btn--accent" id="generate-ai" type="button">Generar imagen del destino</button></div>
+              <div class="status" id="ai-status" role="status"></div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="panel preview-panel">
+        <div class="panel__header"><h2>Flyer 9:16</h2><p>Formato vertical para historias y mensajería.</p></div>
+        <div class="panel__body">
+          <div class="flyer-frame"><canvas id="flyer" width="1080" height="1920" aria-label="Vista previa del flyer"></canvas></div>
+          <p class="flyer-help">El archivo se exporta a 1080 × 1920 píxeles.</p>
+          <div class="button-row"><button class="btn btn--primary" id="download-jpg" type="button">Descargar JPG</button></div>
+        </div>
+      </section>
+    </div>
+  </div></main>
+  <footer><div class="shell footer-inner"><p>© 2026 Tresor Travel</p><p>Plataforma de uso interno</p></div></footer>
+
+  <script src="../assets/subapps.js?v=20260918-4"></script>
+  <script src="../assets/ai-client.js?v=20260917-7"></script>
+  <script>
+    const { formatDate, money, loadImage, drawCover, wrapText, roundedRect, downloadCanvas, setStatus } = SuiteUtils;
+    const canvas = document.querySelector('#flyer');
+    const ctx = canvas.getContext('2d');
+    let backgroundSrc = '../assets/backgrounds/playa.png';
+    let renderTimer;
+
+    const fields = ['destination','date-from','date-to','price','currency','nights','meal','extra','email','phone'];
+    function data() {
+      return Object.fromEntries(fields.map((id) => [id, document.querySelector(`#${id}`).value]));
+    }
+    function selectedIncludes() { return [...document.querySelectorAll('#includes input:checked')].map((input) => input.value); }
+
+    async function renderFlyer() {
+      const d = data();
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      try { drawCover(ctx, await loadImage(backgroundSrc), 0,0,canvas.width,canvas.height); }
+      catch (_) { ctx.fillStyle='#0a315e'; ctx.fillRect(0,0,canvas.width,canvas.height); }
+
+      const shade = ctx.createLinearGradient(0,0,0,canvas.height);
+      shade.addColorStop(0,'rgba(6,27,51,.25)'); shade.addColorStop(.35,'rgba(6,27,51,.1)'); shade.addColorStop(.62,'rgba(6,27,51,.62)'); shade.addColorStop(1,'rgba(6,27,51,.97)');
+      ctx.fillStyle=shade; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+      // Marca
+      ctx.fillStyle='rgba(255,255,255,.94)'; roundedRect(ctx,65,65,350,112,22); ctx.fill();
+      try { const logo=await loadImage('../logo.png'); ctx.drawImage(logo,92,92,295,76); } catch (_) {}
+      ctx.fillStyle='#fff'; ctx.font='700 29px sans-serif'; ctx.textAlign='right'; ctx.fillText('PROMOCIÓN ESPECIAL',1015,122); ctx.textAlign='left';
+
+      // Destino
+      ctx.fillStyle='#fff'; ctx.font='900 96px sans-serif'; const destY=700;
+      wrapText(ctx,(d.destination || 'Tu próximo destino').toUpperCase(),70,destY,940,100,3);
+      ctx.fillStyle='#f4b64a'; ctx.font='800 32px sans-serif';
+      const dateText = d['date-from'] || d['date-to'] ? `${formatDate(d['date-from'])} — ${formatDate(d['date-to'])}` : 'FECHAS A CONFIRMAR';
+      ctx.fillText(dateText.toUpperCase(),74,1020);
+
+      // Datos principales
+      ctx.fillStyle='rgba(255,255,255,.14)'; roundedRect(ctx,65,1070,950,145,26); ctx.fill();
+      ctx.fillStyle='#fff'; ctx.font='700 30px sans-serif'; ctx.fillText(`${d.nights || '—'} NOCHES`,105,1128); ctx.fillText((d.meal || 'Sin régimen').toUpperCase(),105,1178);
+      ctx.textAlign='right'; ctx.font='600 25px sans-serif'; ctx.fillText('POR PERSONA · BASE DOBLE',975,1115); ctx.fillStyle='#fff'; ctx.font='900 68px sans-serif'; ctx.fillText(money(d.price,d.currency,0),975,1185); ctx.textAlign='left';
+
+      // Incluye
+      ctx.fillStyle='#fff'; ctx.font='800 32px sans-serif'; ctx.fillText('INCLUYE',70,1287);
+      const includes=selectedIncludes(); let x=70,y=1320;
+      ctx.font='700 30px sans-serif';
+      includes.forEach((item) => {
+        const width=ctx.measureText(item).width+68;
+        if(x+width>1010){x=70;y+=66;}
+        ctx.fillStyle='rgba(255,255,255,.18)'; roundedRect(ctx,x,y,width,52,26); ctx.fill();
+        ctx.fillStyle='#fff'; ctx.fillText(`✓ ${item}`,x+20,y+36); x+=width+13;
+      });
+
+      ctx.fillStyle='#fff'; ctx.font='500 26px sans-serif';
+      const infoY=Math.max(1495,y+105); wrapText(ctx,d.extra || '',70,infoY,940,36,3);
+      ctx.fillStyle='#ed6848'; roundedRect(ctx,65,1705,950,115,22); ctx.fill();
+      ctx.fillStyle='#fff'; ctx.font='800 27px sans-serif'; ctx.fillText('RESERVAS',100,1755);
+      ctx.font='600 24px sans-serif'; ctx.fillText(`${d.phone || 'Teléfono a confirmar'}  ·  ${d.email || 'Mail a confirmar'}`,100,1795);
+      ctx.fillStyle='rgba(255,255,255,.72)'; ctx.font='19px sans-serif'; ctx.textAlign='center'; ctx.fillText('Tarifas sujetas a disponibilidad al momento de reservar.',540,1873); ctx.textAlign='left';
+    }
+
+    function scheduleRender(){ clearTimeout(renderTimer); renderTimer=setTimeout(renderFlyer,70); }
+    document.querySelectorAll('input,select,textarea').forEach((el)=>{ if(!['api-key','api-endpoint'].includes(el.id)) el.addEventListener('input',scheduleRender); });
+    document.querySelectorAll('.background-option[data-src]').forEach((button)=>button.addEventListener('click',()=>{
+      document.querySelectorAll('.background-option').forEach((item)=>item.classList.remove('is-selected'));
+      button.classList.add('is-selected'); backgroundSrc=button.dataset.src; renderFlyer();
+    }));
+    document.querySelector('#custom-background').addEventListener('change',(event)=>{
+      const file=event.target.files[0]; if(!file)return;
+      const reader=new FileReader(); reader.onload=()=>{ backgroundSrc=reader.result; document.querySelectorAll('.background-option').forEach((item)=>item.classList.remove('is-selected')); event.target.closest('.background-option').classList.add('is-selected'); renderFlyer(); }; reader.readAsDataURL(file);
+    });
+    document.querySelector('#provider').addEventListener('change',(event)=>{ document.querySelector('#endpoint-field').hidden=event.target.value!=='qwen'; });
+
+    function aiConfig(){ return {provider:document.querySelector('#provider').value,key:document.querySelector('#api-key').value,endpoint:document.querySelector('#api-endpoint').value}; }
+    SuiteAI.fillConfigFields(document.querySelector('#provider'),document.querySelector('#api-key'),document.querySelector('#api-endpoint'));
+    document.querySelector('#endpoint-field').hidden=document.querySelector('#provider').value!=='qwen';
+
+    async function generateWithAI() {
+      const button=document.querySelector('#generate-ai'); const status=document.querySelector('#ai-status');
+      const destination=document.querySelector('#destination').value.trim();
+      if(!document.querySelector('#api-key').value.trim() || !destination){ setStatus(status,'Ingresa un destino y una API key.','error'); return; }
+      button.disabled=true; setStatus(status,'Generando el fondo. Puede demorar unos instantes…','info');
+      const prompt=`Fotografía de viaje premium y realista de ${destination}, formato vertical 9:16, composición limpia con espacio central para texto promocional, iluminación atractiva, sin personas, sin texto, sin logos, sin marcas de agua.`;
+      try {
+        backgroundSrc=await SuiteAI.generateImage({...aiConfig(),prompt}); await renderFlyer(); setStatus(status,'Fondo generado y aplicado correctamente.','success');
+      } catch(error){ setStatus(status,`No se pudo generar la imagen: ${error.message}. Puedes seguir usando los fondos incluidos.`, 'error'); }
+      finally { button.disabled=false; }
+    }
+    document.querySelector('#test-key').addEventListener('click',async()=>{const button=document.querySelector('#test-key'),status=document.querySelector('#ai-status');button.disabled=true;setStatus(status,'Comprobando la credencial…','info');try{await SuiteAI.validate(aiConfig());setStatus(status,'Conexión correcta: la clave fue aceptada para generación de texto.','success');}catch(error){setStatus(status,error.message,'error');}finally{button.disabled=false;}});
+    document.querySelector('#generate-ai').addEventListener('click',generateWithAI);
+    document.querySelector('#download-jpg').addEventListener('click',async()=>{ await renderFlyer(); downloadCanvas(canvas,`promocion-${(document.querySelector('#destination').value || 'viaje').toLowerCase().replace(/[^a-z0-9]+/gi,'-')}.jpg`); });
+    renderFlyer();
+  </script>
+</body>
+</html>
