@@ -66,9 +66,9 @@
           <details class="api-box">
             <summary>Generar fondo con inteligencia artificial</summary>
             <div class="api-box__content">
-              <p class="key-note">La configuración guardada en la portada se aplica automáticamente. También puedes reemplazarla aquí. Gemini requiere facturación para imágenes; Pollinations admite texto e imágenes con una misma clave.</p>
+              <p class="key-note">La configuración guardada en la portada se aplica automáticamente. También puedes reemplazarla aquí. Hugging Face utiliza FLUX.1-schnell; el token debe tener el permiso “Make calls to Inference Providers”. No se guarda automáticamente.</p>
               <div class="field-row" style="margin-top:14px">
-                <div class="field"><label for="provider">Proveedor</label><select id="provider"><option value="gemini">Google Gemini</option><option value="pollinations">Pollinations</option><option value="openai">OpenAI / ChatGPT</option><option value="qwen">Qwen / DashScope</option></select></div>
+                <div class="field"><label for="provider">Proveedor</label><select id="provider"><option value="gemini">Google Gemini</option><option value="pollinations">Pollinations</option><option value="huggingface">Hugging Face · FLUX.1-schnell</option><option value="openai">OpenAI / ChatGPT</option><option value="qwen">Qwen / DashScope</option></select></div>
                 <div class="field"><label for="api-key">API key</label><input id="api-key" type="password" autocomplete="off" placeholder="Pegar clave sin comillas"></div>
               </div>
               <div class="field" id="endpoint-field" hidden><label for="api-endpoint">Endpoint de Qwen</label><input id="api-endpoint" placeholder="https://{workspace}.{region}.maas.aliyuncs.com/api/v1/services/aigc/image-generation/generation"><p class="hint">Qwen requiere el endpoint correspondiente al workspace y región de Model Studio.</p></div>
@@ -92,7 +92,7 @@
   <footer><div class="shell footer-inner"><p>© 2026 Tresor Travel</p><p>Plataforma de uso interno</p></div></footer>
 
   <script src="../assets/subapps.js?v=20260918-4"></script>
-  <script src="../assets/ai-client.js?v=20260917-7"></script>
+  <script src="../assets/ai-client.js?v=20260919-1"></script>
   <script>
     const { formatDate, money, loadImage, drawCover, wrapText, roundedRect, downloadCanvas, setStatus } = SuiteUtils;
     const canvas = document.querySelector('#flyer');
@@ -179,7 +179,7 @@
       } catch(error){ setStatus(status,`No se pudo generar la imagen: ${error.message}. Puedes seguir usando los fondos incluidos.`, 'error'); }
       finally { button.disabled=false; }
     }
-    document.querySelector('#test-key').addEventListener('click',async()=>{const button=document.querySelector('#test-key'),status=document.querySelector('#ai-status');button.disabled=true;setStatus(status,'Comprobando la credencial…','info');try{await SuiteAI.validate(aiConfig());setStatus(status,'Conexión correcta: la clave fue aceptada para generación de texto.','success');}catch(error){setStatus(status,error.message,'error');}finally{button.disabled=false;}});
+    document.querySelector('#test-key').addEventListener('click',async()=>{const button=document.querySelector('#test-key'),status=document.querySelector('#ai-status');button.disabled=true;setStatus(status,'Comprobando la credencial…','info');try{await SuiteAI.validate(aiConfig());setStatus(status,document.querySelector('#provider').value==='huggingface'?'Token reconocido. Esta prueba no verifica el permiso de Inference Providers; pulsa “Generar imagen” para confirmarlo.':'Conexión correcta: la clave fue aceptada para generación de texto.','success');}catch(error){setStatus(status,error.message,'error');}finally{button.disabled=false;}});
     document.querySelector('#generate-ai').addEventListener('click',generateWithAI);
     document.querySelector('#download-jpg').addEventListener('click',async()=>{ await renderFlyer(); downloadCanvas(canvas,`promocion-${(document.querySelector('#destination').value || 'viaje').toLowerCase().replace(/[^a-z0-9]+/gi,'-')}.jpg`); });
     renderFlyer();

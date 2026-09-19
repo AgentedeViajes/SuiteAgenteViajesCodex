@@ -7,7 +7,7 @@ window.SuiteAI = (() => {
     return String(raw)
       .trim()
       .replace(/^['"]|['"]$/g, '')
-      .replace(/^(?:GEMINI_API_KEY|GOOGLE_API_KEY|OPENAI_API_KEY|DASHSCOPE_API_KEY|POLLINATIONS_API_KEY)\s*=\s*/i, '')
+      .replace(/^(?:GEMINI_API_KEY|GOOGLE_API_KEY|OPENAI_API_KEY|DASHSCOPE_API_KEY|POLLINATIONS_API_KEY|HF_TOKEN|HUGGING_FACE_TOKEN)\s*=\s*/i, '')
       .replace(/^Bearer\s+/i, '')
       .replace(/\s+/g, '');
   }
@@ -29,16 +29,19 @@ window.SuiteAI = (() => {
 
   function friendlyError(error, provider = '') {
     const raw = String(error?.message || error || 'Error desconocido');
+    if (provider === 'huggingface' && /insufficient permissions|make calls to inference providers|does not have sufficient permissions/i.test(raw)) {
+      return 'El token es auténtico, pero no tiene permiso para usar Inference Providers. En Hugging Face crea o edita un token fine-grained y habilita “Make calls to Inference Providers”; después vuelve a probar la generación.';
+    }
     if (/failed to fetch|networkerror|load failed/i.test(raw)) {
       return 'El navegador no pudo conectarse con la API. No significa necesariamente que la clave sea incorrecta: abre la suite mediante un servidor local y revisa las restricciones de origen/CORS de la clave.';
     }
-    if (/api key not valid|invalid.*key|key.*invalid|invalid authentication credentials/i.test(raw)) {
+    if (/api key not valid|invalid.*key|key.*invalid|invalid authentication credentials/i.test(raw) && provider !== 'huggingface') {
       return 'La API rechazó la credencial. Comprueba que sea una clave creada en Google AI Studio para Gemini API, sin comillas ni prefijos, y que el proyecto tenga la API habilitada.';
     }
     if (error?.status === 400) return `${provider ? `${provider}: ` : ''}La solicitud no fue aceptada por la API: ${raw}`;
     if (error?.status === 401) return 'La credencial no fue autorizada por el proveedor. Verifica la clave y el tipo de cuenta.';
     if (error?.status === 402) return 'La clave fue aceptada, pero el proveedor informa que no tiene saldo o presupuesto disponible.';
-    if (error?.status === 403) return 'La clave existe, pero está bloqueada o sus restricciones no permiten esta solicitud. Revisa la clave y el proyecto en la consola del proveedor.';
+    if (error?.status === 403) return provider === 'huggingface' ? 'Hugging Face rechazó el acceso. Comprueba el permiso “Make calls to Inference Providers” y, si corresponde, acepta las condiciones del modelo FLUX.1-schnell.' : 'La clave existe, pero está bloqueada o sus restricciones no permiten esta solicitud. Revisa la clave y el proyecto en la consola del proveedor.';
     if (error?.status === 429) return 'La clave fue aceptada, pero no tiene cuota disponible o alcanzó el límite de solicitudes.';
     if (error?.status >= 500) return 'El servicio de IA no está disponible temporalmente. Intenta nuevamente en unos minutos.';
     return `${provider ? `${provider}: ` : ''}${raw}`;
@@ -145,6 +148,15 @@ window.SuiteAI = (() => {
     });
   }
 
+  // El cliente oficial se carga sólo cuando se utiliza Hugging Face, para no
+  // añadir peso ni dependencias a las demás aplicaciones de la suite.
+  let huggingFaceModule;
+  async function huggingFaceClient(key) {
+    huggingFaceModule ||= import('https://esm.sh/@huggingface/inference');
+    const { InferenceClient } = await huggingFaceModule;
+    return new InferenceClient(key);
+  }
+
   async function geminiInteractionText(key, prompt, model) {
       const response = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
         method:'POST', headers:{'Content-Type':'application/json','x-goog-api-key':key},
@@ -206,6 +218,16 @@ window.SuiteAI = (() => {
     if (!key) throw new Error('Ingresa una clave API.');
     try {
       let response;
+      if (provider === 'huggingface') {
+        const client = await huggingFaceClient(key);
+        const image = await client.textToImage({
+          model:'black-forest-labs/FLUX.1-schnell',
+          inputs:prompt,
+          parameters:{width:768,height:1344,num_inference_steps:4}
+        });
+        if (!(image instanceof Blob) || !image.type.startsWith('image/')) throw new Error('Hugging Face no devolvió una imagen válida.');
+        return await blobToDataUrl(image);
+      }
       if (provider === 'openai') response = await fetch('https://api.openai.com/v1/images/generations',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},body:JSON.stringify({model:'gpt-image-2',prompt,size:'1024x1792',quality:'medium',output_format:'jpeg'})});
       else if (provider === 'pollinations') {
         const url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?model=flux&width=768&height=1344`;
@@ -239,6 +261,15 @@ window.SuiteAI = (() => {
   }
 
   async function validate({provider,key,endpoint}) {
+    if (provider === 'huggingface') {
+      const normalized = normalizeKey(key);
+      if (!normalized) throw new Error('Ingresa un token de Hugging Face.');
+      try {
+        const response = await fetch('https://huggingface.co/api/whoami-v2', {headers:{'Authorization':`Bearer ${normalized}`}});
+        await readJson(response);
+        return true;
+      } catch (error) { throw new Error(friendlyError(error, 'Hugging Face')); }
+    }
     if (provider === 'pollinations') {
       const normalized = normalizeKey(key);
       if (!normalized) throw new Error('Ingresa una clave API.');
