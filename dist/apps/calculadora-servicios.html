@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a315e">
+  <title>Calculadora de Servicios Turísticos | Suite del Agente</title>
+  <link rel="stylesheet" href="../assets/subapps.css">
+  <style>
+    .calculator{max-width:1100px;margin-inline:auto}
+    .mode-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .mode-option{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:start;gap:10px;min-width:0;margin:0;padding:17px;background:#f8fbfd;border:2px solid var(--line);border-radius:13px;cursor:pointer}
+    .mode-option:has(input:checked){background:#edf7fd;border-color:var(--blue-700)}
+    .mode-option input[type="radio"]{width:18px;height:18px;min-height:18px;margin:3px 0 0;padding:0;accent-color:var(--blue-700)}
+    .mode-option span{min-width:0;overflow-wrap:break-word}
+    .mode-option strong,.mode-option small{display:block}
+    .mode-option strong{font-size:.9rem}
+    .mode-option small{margin-top:3px;color:var(--muted);font-size:.76rem;font-weight:450}
+    .group-field{max-width:240px;margin-top:19px}
+    .service-list{display:grid;gap:13px}
+    .service-row{padding:17px;background:#f9fcfe;border:1px solid var(--line);border-radius:14px}
+    .service-row__head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+    .service-row__head strong{color:var(--navy-950);font-size:.9rem}
+    .remove-service{width:36px;height:36px;padding:0;color:#a43939;background:#fff0f0;border:1px solid #f0cece;border-radius:9px;cursor:pointer;font-size:1.3rem;line-height:1}
+    .remove-service:hover{background:#ffe1e1}
+    .service-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+    .service-fields .field{margin:0}
+    .service-subtotal{display:flex;justify-content:space-between;gap:12px;margin-top:12px;padding-top:11px;border-top:1px solid var(--line);color:var(--muted);font-size:.78rem}
+    .service-subtotal strong{color:var(--navy-900);font-size:.96rem}
+    .calc-actions{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-top:18px}
+    .empty-list{padding:23px;text-align:center;color:var(--muted);background:#f8fbfd;border:1px dashed #c8d8e5;border-radius:12px;font-size:.84rem}
+    .summary-card{padding:24px;color:#fff;background:linear-gradient(125deg,var(--navy-950),var(--blue-700));border-radius:16px}
+    .summary-card span{display:block;color:#bfe5fa;font-size:.76rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
+    .summary-card strong{display:block;margin-top:5px;font-size:clamp(2rem,4vw,3rem);line-height:1.1}
+    .secondary-total{display:none;margin-top:12px;padding:14px 16px;background:var(--sky-100);border:1px solid #d3e9f7;border-radius:11px}
+    .secondary-total.is-visible{display:flex;justify-content:space-between;gap:12px}
+    .secondary-total span{color:var(--muted);font-size:.8rem}
+    .secondary-total strong{color:var(--navy-900)}
+    .breakdown{display:grid;gap:8px;margin-top:20px}
+    .breakdown-item{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--line);font-size:.82rem}
+    .breakdown-item:last-child{border:0}
+    .breakdown-item span{min-width:0;overflow-wrap:anywhere;color:var(--muted)}
+    .breakdown-item strong{flex:0 0 auto;color:var(--navy-950)}
+    .muted-summary{margin:0;color:var(--muted);font-size:.82rem}
+    @media(max-width:760px){.mode-options{grid-template-columns:1fr}}
+    @media(max-width:430px){.service-fields{grid-template-columns:1fr}.calc-actions .btn{width:100%}.secondary-total.is-visible{align-items:flex-start;flex-direction:column;gap:3px}}
+  </style>
+</head>
+<body>
+  <header class="topbar"><div class="shell topbar__inner"><a class="brand" href="../index.html"><img src="../logo.png" alt="Tresor Travel"></a><a class="back-link" href="../index.html">‹ Volver a la suite</a></div></header>
+  <main class="app-main"><div class="shell">
+    <div class="app-intro"><p class="eyebrow">Presupuesto rápido</p><h1>Calculadora de Servicios Turísticos</h1><p>Suma servicios en USD, aplica un coeficiente de markup opcional y consulta el total al instante.</p></div>
+    <div class="workspace calculator">
+      <section class="panel"><div class="panel__header"><h2>Servicios a cotizar</h2><p>Todos los campos son editables. El borrador se conserva en este navegador.</p></div><div class="panel__body">
+        <div class="field"><span class="field-label">Modalidad de cotización</span><div class="mode-options" role="radiogroup" aria-label="Modalidad de cotización">
+          <label class="mode-option"><input type="radio" name="mode" value="person" checked><span><strong>Por persona</strong><small>Cada valor cargado corresponde a una persona.</small></span></label>
+          <label class="mode-option"><input type="radio" name="mode" value="group"><span><strong>Por grupo</strong><small>Cada valor cargado corresponde al grupo completo.</small></span></label>
+        </div></div>
+        <div class="field group-field"><label for="people">Cantidad de personas</label><input id="people" type="number" min="1" step="1" value="1" inputmode="numeric"><p class="hint">Permite ver también el total equivalente en la otra modalidad.</p></div>
+        <div class="field"><span class="field-label">Detalle de servicios</span><div class="service-list" id="services"></div></div>
+        <div class="calc-actions"><button class="btn btn--secondary" id="add-service" type="button">＋ Agregar servicio</button><button class="btn" id="clear-all" type="button" style="color:#a43939;background:#fff0f0;border:1px solid #f0cece">Eliminar todo y empezar de cero</button></div>
+        <div class="status" id="calculator-status" role="status"></div>
+      </div></section>
+      <section class="panel preview-panel"><div class="panel__header"><h2>Resultado de la cotización</h2><p>La suma se actualiza mientras editas.</p></div><div class="panel__body">
+        <div class="summary-card"><span id="total-label">Total por persona · USD</span><strong id="grand-total">US$ 0</strong></div>
+        <div class="secondary-total" id="secondary-total"><span id="secondary-label"></span><strong id="secondary-value"></strong></div>
+        <div class="quote-section"><h4>Desglose</h4><div class="breakdown" id="breakdown"><p class="muted-summary">Agrega un servicio para ver el desglose.</p></div></div>
+        <p class="hint" style="margin-top:18px">Markup por coeficiente: 1,20 multiplica el valor por 1,20. Si se deja vacío, se aplica ×1 (sin markup). No se convierte la moneda.</p>
+      </div></section>
+    </div>
+  </div></main>
+  <footer><div class="shell footer-inner"><p>© <span id="year"></span> Tresor Travel</p><p>Uso interno</p></div></footer>
+  <script src="../assets/subapps.js?v=20260918-4"></script>
+  <script>
+  (() => {
+    const STORAGE_KEY='suite-tourist-services-v1';
+    const types=['Aéreo','Traslado','Bus','Tren','Ferry','Hotel','Excursión','Ticket'];
+    const list=document.querySelector('#services');
+    const status=document.querySelector('#calculator-status');
+    const usd=value=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(value);
+    const escape=SuiteUtils.escapeHtml;
+    let nextId=0;
+
+    function addService(data={}) {
+      const id=++nextId;
+      const row=document.createElement('div');
+      row.className='service-row';
+      row.dataset.id=String(id);
+      row.innerHTML=`<div class="service-row__head"><strong>Servicio <span class="service-number"></span></strong><button class="remove-service" type="button" aria-label="Eliminar servicio" title="Eliminar servicio">×</button></div>
+        <div class="service-fields">
+          <div class="field"><label for="type-${id}">Servicio</label><select id="type-${id}" class="service-type">${types.map(name=>`<option value="${name}">${name}</option>`).join('')}</select></div>
+          <div class="field"><label for="detail-${id}">Detalle</label><input id="detail-${id}" class="service-detail" type="text" maxlength="200" placeholder="Ej.: Hotel 4★, 5 noches" value="${escape(data.detail||'')}"></div>
+          <div class="field"><label for="amount-${id}">Valor USD</label><input id="amount-${id}" class="service-amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" value="${Number.isFinite(Number(data.amount))&&data.amount!==''?data.amount:''}"></div>
+          <div class="field"><label for="markup-${id}">Markup ×</label><input id="markup-${id}" class="service-markup" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="1,00 (opcional)" value="${Number.isFinite(Number(data.markup))&&data.markup!==''?data.markup:''}"></div>
+        </div><div class="service-subtotal"><span class="service-formula">Valor × coeficiente</span><strong class="service-result">${usd(0)}</strong></div>`;
+      row.querySelector('.service-type').value=types.includes(data.type)?data.type:types[0];
+      list.append(row);
+      recalculate();
+      return row;
+    }
+
+    function readRows(){return [...list.querySelectorAll('.service-row')].map(row=>({
+      type:row.querySelector('.service-type').value,
+      detail:row.querySelector('.service-detail').value,
+      amount:row.querySelector('.service-amount').value,
+      markup:row.querySelector('.service-markup').value
+    }));}
+    function persist(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify({mode:document.querySelector('input[name="mode"]:checked').value,people:document.querySelector('#people').value,rows:readRows()}));}catch(_){/* La calculadora sigue funcionando si el navegador bloquea el almacenamiento. */}}
+    function recalculate(){
+      const mode=document.querySelector('input[name="mode"]:checked').value;
+      const peopleInput=document.querySelector('#people');
+      const people=Number(peopleInput.value);
+      const validPeople=Number.isInteger(people)&&people>=1;
+      let total=0,invalid=false;
+      const rows=[...list.querySelectorAll('.service-row')];
+      const breakdown=[];
+      rows.forEach((row,index)=>{
+        row.querySelector('.service-number').textContent=String(index+1);
+        const amountField=row.querySelector('.service-amount');
+        const markupField=row.querySelector('.service-markup');
+        const amount=amountField.value===''?0:Number(amountField.value);
+        const markup=markupField.value===''?1:Number(markupField.value);
+        const validAmount=Number.isFinite(amount)&&amount>=0;
+        const validMarkup=Number.isFinite(markup)&&markup>0;
+        amountField.setAttribute('aria-invalid',String(!validAmount));
+        markupField.setAttribute('aria-invalid',String(!validMarkup));
+        if(!validAmount||!validMarkup)invalid=true;
+        const subtotal=validAmount&&validMarkup?Math.round((amount*markup+Number.EPSILON)*100)/100:0;
+        row.querySelector('.service-formula').textContent=`${usd(validAmount?amount:0)} × ${validMarkup?new Intl.NumberFormat('es-AR',{maximumFractionDigits:2}).format(markup):'—'}`;
+        row.querySelector('.service-result').textContent=validAmount&&validMarkup?usd(subtotal):'Revisar valores';
+        total+=subtotal;
+        if(validAmount&&validMarkup&&(amount>0||row.querySelector('.service-detail').value.trim()))breakdown.push({label:`${row.querySelector('.service-type').value}${row.querySelector('.service-detail').value.trim()?' · '+row.querySelector('.service-detail').value.trim():''}`,amount:subtotal});
+      });
+      peopleInput.setAttribute('aria-invalid',String(!validPeople));
+      document.querySelector('#total-label').textContent=mode==='person'?'Total por persona · USD':'Total del grupo · USD';
+      document.querySelector('#grand-total').textContent=invalid||!validPeople?'Revisar valores':usd(total);
+      const secondary=document.querySelector('#secondary-total');
+      secondary.classList.toggle('is-visible',!invalid&&validPeople&&people>1);
+      document.querySelector('#secondary-label').textContent=mode==='person'?`Total para ${people} personas`:`Equivalente por persona · ${people} personas`;
+      document.querySelector('#secondary-value').textContent=usd(mode==='person'?total*people:total/people);
+      document.querySelector('#breakdown').innerHTML=breakdown.length?breakdown.map(item=>`<div class="breakdown-item"><span>${escape(item.label)}</span><strong>${usd(item.amount)}</strong></div>`).join(''):'<p class="muted-summary">Agrega un servicio con valor para ver el desglose.</p>';
+      if(invalid||!validPeople)SuiteUtils.setStatus(status,'Revisa los valores: el importe no puede ser negativo, el markup debe ser mayor que cero y la cantidad de personas debe ser un entero positivo.','error');
+      else status.className='status';
+      if(!rows.length)list.innerHTML='<div class="empty-list">No hay servicios cargados. Pulsa “Agregar servicio” para comenzar.</div>';
+      persist();
+    }
+
+    list.addEventListener('input',recalculate);
+    list.addEventListener('change',recalculate);
+    list.addEventListener('click',event=>{const button=event.target.closest('.remove-service');if(!button)return;button.closest('.service-row').remove();recalculate();});
+    document.querySelector('#add-service').addEventListener('click',()=>{list.querySelector('.empty-list')?.remove();const row=addService();row.querySelector('.service-type').focus();});
+    document.querySelectorAll('input[name="mode"]').forEach(input=>input.addEventListener('change',recalculate));
+    document.querySelector('#people').addEventListener('input',recalculate);
+    document.querySelector('#clear-all').addEventListener('click',()=>{
+      if(!window.confirm('¿Eliminar todos los servicios y comenzar una nueva cotización?'))return;
+      list.innerHTML='';document.querySelector('input[name="mode"][value="person"]').checked=true;document.querySelector('#people').value='1';
+      try{localStorage.removeItem(STORAGE_KEY);}catch(_){}
+      addService();SuiteUtils.setStatus(status,'Cotización reiniciada.','success');
+    });
+    document.querySelector('#year').textContent=new Date().getFullYear();
+    let saved=null;try{saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');}catch(_){}
+    if(saved&&typeof saved==='object'){
+      document.querySelector(`input[name="mode"][value="${saved.mode==='group'?'group':'person'}"]`).checked=true;
+      document.querySelector('#people').value=saved.people||'1';
+      if(Array.isArray(saved.rows)){saved.rows.forEach(row=>addService(row));if(!saved.rows.length)recalculate();}
+      else addService();
+    }else addService();
+  })();
+  </script>
+</body>
+</html>
