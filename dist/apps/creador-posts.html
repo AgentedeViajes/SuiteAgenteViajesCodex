@@ -107,7 +107,7 @@
               <div class="field-row"><div class="field"><label for="hotel">Hotel (opcional)</label><input id="hotel" placeholder="Nombre del hotel"></div><div class="field"><label for="nights">Noches</label><input id="nights" type="number" min="1" step="1" placeholder="7"></div></div>
               <div class="field"><label for="meal">Régimen</label><select id="meal"><option value="">Sin especificar</option><option>Desayuno</option><option>Media Pensión</option><option>Pensión Completa</option><option>All Inclusive</option><option>Sin Régimen</option></select></div>
               <div class="form-section-title">Servicios incluidos</div>
-              <div class="field-row"><div class="field"><label for="service-preset">Agregar servicio</label><select id="service-preset"><option value="">Elegir servicio…</option><option>✈️|Aéreos</option><option>🏨|Hotel</option><option>🍹|All Inclusive</option><option>🚐|Traslados</option><option>🛡️|Asistencia al viajero</option><option>🧳|Equipaje</option><option>🍽️|Comidas</option><option>🗺️|Excursiones</option><option>🚢|Crucero</option><option>🚆|Tren</option></select></div><div class="field"><label>&nbsp;</label><button class="btn btn--secondary" id="add-service" type="button">＋ Agregar línea</button></div></div>
+              <div class="field-row"><div class="field"><label for="service-preset">Agregar servicio</label><select id="service-preset"><option value="">Elegir servicio…</option><option>✈️|Aéreos</option><option>🏨|Hotel</option><option>🍹|All Inclusive</option><option>🚐|Traslados</option><option>🛡️|Asistencia al viajero</option><option>🧳|Equipaje</option><option>🍽️|Comidas</option><option>☕|Desayuno</option><option>🗺️|Excursiones</option><option>🚢|Crucero</option><option>🚆|Tren</option></select></div><div class="field"><label>&nbsp;</label><button class="btn btn--secondary" id="add-service" type="button">＋ Agregar línea</button></div></div>
               <div class="service-editor" id="service-editor"></div>
               <div class="form-section-title">Detalles</div>
               <div class="field"><label for="observations">Observaciones</label><textarea id="observations" placeholder="Información adicional para el flyer"></textarea></div>
@@ -151,7 +151,7 @@
       'Europa':['París','Londres','Madrid','Italia','Roma','Islas Griegas','Europa multidestino'],
       'Otros destinos':['Turquía','Capadocia','Estambul','Dubái','Marruecos','Egipto / El Cairo']
     };
-    const SERVICES=[['✈️','Aéreos'],['🏨','Hotel'],['🍹','All Inclusive'],['🚐','Traslados'],['🛡️','Asistencia al viajero'],['🧳','Equipaje'],['🍽️','Comidas'],['🗺️','Excursiones'],['🚢','Crucero'],['🚆','Tren']];
+    const SERVICES=[['✈️','Aéreos'],['🏨','Hotel'],['🍹','All Inclusive'],['🚐','Traslados'],['🛡️','Asistencia al viajero'],['🧳','Equipaje'],['🍽️','Comidas'],['☕','Desayuno'],['🗺️','Excursiones'],['🚢','Crucero'],['🚆','Tren']];
     let TEMPLATES=[];
     const $=selector=>document.querySelector(selector);
     const escape=SuiteUtils.escapeHtml;
