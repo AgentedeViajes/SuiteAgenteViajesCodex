@@ -1,0 +1,5 @@
+@tesseract.js-data/eng and @tesseract.js-data/spa version 1.0.0
+
+The package metadata declares these traineddata packages under the MIT license.
+Source project: https://github.com/naptha/tessdata
+The compressed language files are distributed unchanged.
