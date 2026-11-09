@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#082c50"><meta name="robots" content="noindex,nofollow">
+  <title>Documentacion y Agenda de Pasajeros | Suite del Agente</title>
+  <link rel="stylesheet" href="../assets/subapps.css">
+  <link rel="stylesheet" href="../assets/documentacion-agenda-pasajeros.css">
+</head>
+<body>
+<header class="topbar"><div class="shell topbar__inner">
+  <a class="brand" href="../index.html" aria-label="Volver a la Suite"><img src="../logo.png" alt="Tresor Travel"></a>
+  <strong class="top-title">Documentacion y Agenda de Pasajeros</strong><a class="back-link" href="../index.html">‹ Volver a la Suite</a>
+</div></header>
+<main class="app-main passenger-app"><div class="shell layout">
+  <aside class="sidebar" aria-label="Navegación de la aplicación">
+    <div class="agency"><span class="agency-mark">T</span><span><b>Tresor Travel</b><small>Gestión de pasajeros</small></span></div>
+    <nav aria-label="Secciones">
+      <button class="nav-item active" data-panel="dashboard" aria-current="page" type="button"><i>⌂</i>Resumen</button>
+      <button class="nav-item" data-panel="passengers" type="button"><i>♙</i>Pasajeros</button>
+      <button class="nav-item" data-panel="trips" type="button"><i>✈</i>Viajes</button>
+      <button class="nav-item" data-panel="deliveries" type="button"><i>▤</i>Entregas</button>
+      <button class="nav-item" data-panel="communications" type="button"><i>✉</i>Comunicaciones</button>
+      <button class="nav-item" data-panel="completed" type="button"><i>✓</i>Viajes finalizados</button>
+      <button class="nav-item" data-panel="settings" type="button"><i>⚙</i>Configuración</button>
+    </nav>
+    <div class="advisor"><span>J</span><div><b>Javier</b><small>Asesor de viajes</small></div></div>
+  </aside>
+  <section class="content">
+    <div class="session-bar"><span class="session-dot"></span><span>Acceso protegido por SuiteCloud</span><b id="session-label">Verificando sesión…</b></div>
+    <section data-panel-content="dashboard">
+      <div class="page-heading"><div><p class="eyebrow">Tresor Travel · Panel de gestión</p><h1>Documentacion y Agenda de Pasajeros</h1><p>Organizá los viajes de tus pasajeros y prepará su documentación en un solo lugar.</p></div><span class="stage">Etapa 1 · Estructura</span></div>
+      <div class="welcome"><div><small>Tu espacio de trabajo</small><h2>Hola, Javier.</h2><p>Soy tu espacio para organizar pasajeros, viajes y entregas de documentación en Tresor Travel.</p></div><div class="plane-art" aria-hidden="true">✈</div></div>
+      <div class="metrics">
+        <article><span class="metric-icon blue">♙</span><small>Pasajeros</small><b id="metric-passengers">—</b><em>En tu agenda</em></article>
+        <article><span class="metric-icon orange">✈</span><small>Viajes registrados</small><b id="metric-trips">—</b><em>En el historial compartido</em></article>
+        <article><span class="metric-icon teal">▤</span><small>Entregas activas</small><b id="metric-deliveries">0</b><em>Enlaces vigentes</em></article>
+        <article><span class="metric-icon violet">♡</span><small>Mensajes manuales</small><b>—</b><em>Preparación en Comunicaciones</em></article>
+      </div>
+      <div class="cards">
+        <article class="surface"><div class="surface-head"><div><small class="eyebrow">Agenda</small><h2>Próximos viajes</h2></div><button class="text-button" type="button" data-go="trips">Ver viajes</button></div><div id="dashboard-trips" class="compact-list"><div class="empty"><span>✈</span><h3>Tu agenda de viajes aparecerá acá</h3><p>Agregá pasajeros y registrá sus viajes, incluso si ya ocurrieron.</p></div></div></article>
+        <article class="surface service"><small class="eyebrow">Atención personal</small><h2>Un viaje acompañado por Javier</h2><p>La documentación y los mensajes al pasajero se presentarán en primera persona, con información preparada por vos.</p><div class="signature"><b>Javier</b><span>Tu asesor de viajes en Tresor Travel ✈️</span></div></article>
+      </div>
+      <div class="brand-note"><b>Modo Rumbo</b><span>Es una página independiente de promociones y destinos. Se mostrará como enlace complementario cuando configuremos su URL; Tresor Travel seguirá siendo la agencia vendedora.</span></div>
+    </section>
+    <section data-panel-content="passengers" hidden>
+      <div class="page-heading"><div><p class="eyebrow">Agenda de clientes</p><h1>Pasajeros</h1><p>Guardá los datos de contacto y el historial de viajes, también de pasajeros anteriores.</p></div><button class="btn btn--primary" id="add-passenger" type="button">＋ Agregar pasajero</button></div>
+      <div class="section-toolbar"><label class="search-field"><span>Buscar pasajeros</span><input id="passenger-search" type="search" placeholder="Nombre, correo, teléfono o WhatsApp" autocomplete="off"></label><label class="sort-field"><span>Ordenar por</span><select id="passenger-sort"><option value="name">Apellido y nombre</option><option value="created">Fecha de creación</option><option value="trips">Cantidad de viajes</option></select></label></div>
+      <div class="passenger-workspace"><div id="passenger-list" class="passenger-list" aria-live="polite"></div><article id="passenger-detail" class="surface passenger-detail"><div class="empty"><span>♙</span><h3>Elegí un pasajero</h3><p>Su información y sus viajes aparecerán acá.</p></div></article></div>
+    </section>
+    <section data-panel-content="trips" hidden>
+      <div class="page-heading"><div><p class="eyebrow">Historial comercial</p><h1>Viajes</h1><p>Consultá y organizá viajes compartidos por uno o varios pasajeros.</p></div><button class="btn btn--primary" id="add-trip" type="button">＋ Registrar viaje</button></div>
+      <div class="section-toolbar"><label class="search-field"><span>Buscar viajes</span><input id="trip-search" type="search" placeholder="Destino, título o pasajero" autocomplete="off"></label><label class="sort-field"><span>Ordenar por</span><select id="trip-sort"><option value="chronological">Fecha de salida</option><option value="recent">Más recientes</option></select></label></div>
+      <div id="trip-list" class="trip-list" aria-live="polite"></div>
+    </section>
+    <section data-panel-content="deliveries" hidden><div class="page-heading"><div><p class="eyebrow">Documentación del viaje</p><h1>Entregas</h1><p>Administrá PDF privados, reservas aéreas y un enlace compartido por viaje.</p></div><span class="stage">Etapa 3B</span></div><div class="stage3b-security-note"><b>Enlace confidencial</b><span>Quien reciba el enlace activo podrá ver los documentos generales y la información del grupo. Los documentos asignados a una persona no se muestran en el portal compartido.</span></div><div id="delivery-trip-list" class="stage3b-trip-list" aria-live="polite"></div></section>
+    <section data-panel-content="communications" id="stage4a-communications" hidden></section>
+    <section data-panel-content="completed" hidden><div class="page-heading"><div><p class="eyebrow">Historial comercial</p><h1>Viajes finalizados</h1><p>El historial del viaje se conservará aunque más adelante elimines sus documentos.</p></div><span class="stage">Etapa 5</span></div><article class="surface section-empty"><span>✓</span><h2>Aún no hay viajes para revisar</h2><p>La limpieza de archivos será manual, con confirmación y sin borrar el registro comercial del viaje.</p><small>No se eliminará nada automáticamente.</small></article></section>
+    <section data-panel-content="settings" hidden><div class="page-heading"><div><p class="eyebrow">Identidad y preferencias</p><h1>Configuración</h1><p>La información comercial se centralizará acá para reutilizarla en cada entrega.</p></div><span class="stage">Preparación</span></div><div class="settings-grid">
+      <article class="surface settings"><small class="eyebrow">Identidad del servicio</small><dl><div><dt>Agencia vendedora</dt><dd>Tresor Travel</dd></div><div><dt>Asesor</dt><dd>Javier</dd></div><div><dt>Firma habitual</dt><dd>Javier — Tu asesor de viajes en Tresor Travel ✈️</dd></div></dl></article>
+      <article class="surface settings"><small class="eyebrow">Servicios conectados</small><dl><div><dt>Modo Rumbo</dt><dd>Página promocional complementaria; URL pendiente de configuración.</dd></div><div><dt>Comunicaciones</dt><dd>WhatsApp manual, con revisión previa; la Suite no envía mensajes automáticamente.</dd></div><div><dt>Documentos privados</dt><dd>Los PDF se guardan en el bucket privado del proyecto.</dd></div></dl></article>
+    </div></section>
+    <footer class="app-footer"><span>© <span id="current-year"></span> Tresor Travel</span><span>Uso administrativo · Acceso de SuiteCloud</span></footer>
+  </section>
+</div></main>
+<dialog id="stage3b-manager-dialog" class="record-dialog stage3b-manager" aria-labelledby="stage3b-manager-title"><div class="stage3b-dialog-inner"><div class="dialog-head"><div><p class="eyebrow">Tresor Travel · Gestión del viaje</p><h2 id="stage3b-manager-title">Documentación</h2></div><button class="icon-button" type="button" data-action="close-stage3b" aria-label="Cerrar">×</button></div><div id="stage3b-manager-content" class="stage3b-manager-content"></div></div></dialog>
+<dialog id="record-dialog" class="record-dialog" aria-labelledby="dialog-title"><form id="record-form" novalidate><div class="dialog-head"><div><p class="eyebrow" id="dialog-eyebrow">Agenda de pasajeros</p><h2 id="dialog-title">Nuevo registro</h2></div><button class="icon-button" type="button" data-dialog-close aria-label="Cerrar">×</button></div><div id="dialog-fields" class="dialog-fields"></div><p id="dialog-error" class="form-error" role="alert" hidden></p><div class="dialog-actions"><button class="btn btn--secondary" type="button" data-dialog-close>Cancelar</button><button class="btn btn--primary" id="dialog-submit" type="submit">Guardar</button></div></form></dialog>
+<dialog id="whatsapp-dialog" class="record-dialog whatsapp-dialog" aria-labelledby="whatsapp-title"><div class="whatsapp-content"><div class="dialog-head"><div><p class="eyebrow">Mensaje personalizado</p><h2 id="whatsapp-title">Preparar WhatsApp</h2></div><button class="icon-button" type="button" data-whatsapp-close aria-label="Cerrar">×</button></div><p id="whatsapp-number-label" class="whatsapp-number"></p><p id="whatsapp-warning" class="form-error" role="alert" hidden></p><label class="form-field whatsapp-message-field"><span>Mensaje editable</span><textarea id="whatsapp-message" rows="7"></textarea></label><div class="whatsapp-preview-wrap"><b>Vista previa</b><pre id="whatsapp-preview" class="whatsapp-preview"></pre></div><div class="dialog-actions whatsapp-actions"><button class="btn btn--secondary" type="button" data-whatsapp-close>Cancelar</button><button id="whatsapp-correct" class="btn btn--secondary" type="button" hidden>Corregir teléfono</button><a id="whatsapp-open" class="btn btn--whatsapp" target="_blank" rel="noopener noreferrer" aria-disabled="true" tabindex="-1">Abrir WhatsApp</a></div><p class="whatsapp-manual-note">El mensaje quedará preparado. Javier debe revisarlo y enviarlo manualmente desde WhatsApp.</p></div></dialog>
+<script src="../assets/subapps.js?v=20260918-4"></script><script src="../assets/supabase-config.js"></script><script src="../assets/suite-cloud.js"></script><script src="../assets/documentacion-agenda-pasajeros-store.js?v=20261109-edit-trip-fix1"></script><script src="../assets/documentacion-agenda-pasajeros-stage3b-store.js"></script><script src="../assets/documentacion-agenda-pasajeros-stage4a.js"></script><script src="../assets/documentacion-agenda-pasajeros.js?v=20261109-edit-trip-fix1"></script><script src="../assets/documentacion-agenda-pasajeros-stage3b.js"></script>
+</body></html>

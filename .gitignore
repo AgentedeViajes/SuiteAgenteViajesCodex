@@ -1,0 +1,39 @@
+# macOS metadata
+.DS_Store
+**/.DS_Store
+
+# Local environment files and credentials
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.mobileprovision
+.secrets/
+**/.secrets/
+
+# Supabase local CLI state (project link/cache, not app source)
+supabase/.temp/
+
+# Local build/service metadata and test output
+.vercel/
+node_modules/
+coverage/
+.cache/
+
+# One-off bootstrap prepared with the administrator email
+supabase/bootstrap_tresor_initial_workspace_READY.sql
+
+# Local editor and operating-system artifacts
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs and transient output
+*.log
+npm-debug.log*

@@ -1,0 +1,5 @@
+[functions.tresor-delivery-admin]
+verify_jwt = false
+
+[functions.tresor-portal]
+verify_jwt = false
