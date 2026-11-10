@@ -380,41 +380,49 @@
     } catch (error) { reportSafeError(error, 'guardar viaje'); showFormError(noWorkspaceMessage(error)); }
     finally { submitButton.disabled = false; submitButton.textContent = record ? 'Guardar cambios' : 'Guardar'; }
   }
-  async function deletePassenger(id) {
+  async function deletePassenger(id, actionButton) {
     var person = byId(state.passengers, id); if (!person) return;
     var trips = passengerTrips(id);
     var confirmation = person.deletion_pending
       ? 'La eliminación de ' + passengerName(person) + ' quedó pendiente. ¿Querés reintentar? Los viajes se conservarán; sus enlaces del portal seguirán revocados.'
       : '¿Eliminar definitivamente a ' + passengerName(person) + '? Se quitarán sus asociaciones, sus PDF individuales y las reservas aéreas que no tengan otros pasajeros asociados. Los viajes, otros pasajeros y documentos compartidos se conservarán. Los enlaces compartidos de ' + trips.length + (trips.length === 1 ? ' viaje se revocarán y rotarán; habrá que compartirlos nuevamente.' : ' viajes se revocarán y rotarán; habrá que compartirlos nuevamente.');
     if (!window.confirm(confirmation)) return;
+    var originalLabel = actionButton ? actionButton.textContent : '';
+    if (actionButton) { actionButton.disabled = true; actionButton.textContent = 'Eliminando…'; }
+    setStatus('Eliminando pasajero y verificando sus documentos…', '');
     try {
       var result = await state.store.deletePassenger(id);
       if (String(state.selectedPassengerId) === String(id)) state.selectedPassengerId = null;
-      await reloadData();
+      try { await reloadData(); } catch (_) { setStatus('La solicitud terminó, pero no se pudo actualizar la lista. Actualizá la página y verificá el estado antes de volver a intentar.', 'error'); return; }
+      if (byId(state.passengers, id)) throw new Error('Supabase respondió, pero el pasajero todavía aparece después de actualizar la lista. No se mostrará como eliminado.');
       var rotated = Number(result && result.rotatedLinks || 0);
       setStatus('Pasajero eliminado. Se retiraron sus PDF individuales; los documentos compartidos y los viajes se conservaron.' + (rotated ? ' Se revocaron y rotaron ' + rotated + (rotated === 1 ? ' enlace; reactivá y compartí el nuevo desde Documentación.' : ' enlaces; reactivá y compartí los nuevos desde Documentación.') : ''), 'success');
     } catch (error) {
       reportSafeError(error, 'eliminar pasajero');
       await reloadData().catch(function () {});
-      setStatus(noWorkspaceMessage(error), 'error');
-    }
+      setStatus('No se completó la eliminación del pasajero. ' + noWorkspaceMessage(error), 'error');
+    } finally { if (actionButton && actionButton.isConnected) { actionButton.disabled = false; actionButton.textContent = originalLabel; } }
   }
-  async function deleteTrip(id) {
+  async function deleteTrip(id, actionButton) {
     var trip = byId(state.trips, id); if (!trip) return;
     var name = trip.trip_name || trip.destination;
     var confirmation = trip.deletion_pending
       ? 'La eliminación de «' + name + '» quedó pendiente. ¿Querés reintentar? El enlace del portal ya está revocado.'
       : '¿Eliminar definitivamente el viaje «' + name + '»? Se borrarán sus vouchers y PDF de Storage, reservas, seguimientos y asociaciones. Los pasajeros y sus otros viajes permanecerán. Esta acción no se puede deshacer.';
     if (!window.confirm(confirmation)) return;
+    var originalLabel = actionButton ? actionButton.textContent : '';
+    if (actionButton) { actionButton.disabled = true; actionButton.textContent = 'Eliminando…'; }
+    setStatus('Eliminando viaje y verificando sus PDF…', '');
     try {
       await state.store.deleteTrip(id);
-      await reloadData();
+      try { await reloadData(); } catch (_) { setStatus('La solicitud terminó, pero no se pudo actualizar la lista. Actualizá la página y verificá el estado antes de volver a intentar.', 'error'); return; }
+      if (byId(state.trips, id)) throw new Error('Supabase respondió, pero el viaje todavía aparece después de actualizar la lista. No se mostrará como eliminado.');
       setStatus('Viaje y sus PDF eliminados. Los pasajeros y sus otros viajes se conservaron.', 'success');
     } catch (error) {
       reportSafeError(error, 'eliminar viaje');
       await reloadData().catch(function () {});
-      setStatus(noWorkspaceMessage(error), 'error');
-    }
+      setStatus('No se completó la eliminación del viaje. ' + noWorkspaceMessage(error), 'error');
+    } finally { if (actionButton && actionButton.isConnected) { actionButton.disabled = false; actionButton.textContent = originalLabel; } }
   }
   function handleAction(event) {
     var button = event.target.closest('[data-action]'); if (!button) return;
@@ -422,9 +430,9 @@
     if (button.dataset.action === 'open-passenger') { state.selectedPassengerId = id; renderPassengerList(); renderPassengerDetail(); }
     else if (button.dataset.action === 'open-whatsapp') openWhatsAppDialog(id);
     else if (button.dataset.action === 'edit-passenger') openDialog('Editar pasajero', 'Agenda de clientes', 'passenger', byId(state.passengers, id));
-    else if (button.dataset.action === 'delete-passenger') deletePassenger(id);
+    else if (button.dataset.action === 'delete-passenger') deletePassenger(id, button);
     else if (button.dataset.action === 'edit-trip') { try { if (!model.openTripEditor(state.trips, id, function (title, eyebrow, trip) { openDialog(title, eyebrow, 'trip', trip); })) setStatus('No se encontró el viaje seleccionado. Actualizá la lista e intentá nuevamente.', 'error'); } catch (error) { reportSafeError(error, 'abrir formulario de viaje'); setStatus('No se pudo abrir el formulario del viaje. Actualizá la aplicación e intentá nuevamente.', 'error'); } }
-    else if (button.dataset.action === 'delete-trip') deleteTrip(id);
+    else if (button.dataset.action === 'delete-trip') deleteTrip(id, button);
     else if (button.dataset.action === 'add-trip-for-passenger') { openDialog('Registrar viaje', 'Historial comercial', 'trip', null); activeDialog.preselectedPassengerId = id; var checkbox = $$('input[name="passenger_ids"]', form).find(function (item) { return String(item.value) === String(id); }); if (checkbox) checkbox.checked = true; }
   }
   function attachEvents() {

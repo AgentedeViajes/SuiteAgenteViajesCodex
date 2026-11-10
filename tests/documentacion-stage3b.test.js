@@ -55,7 +55,10 @@ test('config de Edge Functions requiere validación manual del admin y permite p
  const pub=fs.readFileSync(path.join(__dirname,'../supabase/functions/tresor-portal/index.ts'),'utf8');
  assert.match(config,/\[functions\.tresor-delivery-admin\][\s\S]*?verify_jwt = false/);assert.match(admin,/auth\/v1\/user/);assert.match(admin,/role:\s*'eq\.admin'/);
  assert.match(pub,/status:'eq\.active'/);assert.match(pub,/passenger_id:'is\.null'/);assert.match(pub,/expiresIn:120/);
- assert.doesNotMatch(admin+pub,/console\.(log|info|warn|error)/);
+ assert.doesNotMatch(pub,/console\.(log|info|warn|error)/);
+ assert.match(admin,/backend request failed/);
+ assert.match(admin,/stage: error\.stage, status: error\.status, code:/);
+ assert.doesNotMatch(admin,/console\.(?:log|warn|error)\([^\n]*(?:token|storage_path|body)/i);
 });
 
 

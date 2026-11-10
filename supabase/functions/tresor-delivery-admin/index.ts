@@ -8,9 +8,16 @@ const bucket = 'tresor-passenger-documents';
 class HttpError extends Error {
   status: number;
   publicMessage: string;
-  constructor(status: number, publicMessage: string) { super(publicMessage); this.status = status; this.publicMessage = publicMessage; }
+  stage: string;
+  constructor(status: number, publicMessage: string, stage = 'request') { super(publicMessage); this.status = status; this.publicMessage = publicMessage; this.stage = stage; }
 }
-function fail() { return new Error('request-failed'); }
+class RestError extends Error {
+  status: number;
+  code: string;
+  stage: string;
+  constructor(status: number, code: string, stage: string) { super('upstream-request-failed'); this.status = status; this.code = code; this.stage = stage; }
+}
+function fail() { return new HttpError(400, 'La solicitud no es válida.', 'validation'); }
 function uuid(value: unknown): value is string { return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value); }
 function safeStoragePath(path: string) { return path.split('/').map(encodeURIComponent).join('/'); }
 function safeRows(rows: any[], workspaceId: string, tripId: string, passengerId?: string): any[] {
@@ -25,25 +32,28 @@ function safeRows(rows: any[], workspaceId: string, tripId: string, passengerId?
     return row;
   });
 }
-async function rest(path: string, init: RequestInit = {}): Promise<any> {
+async function rest(path: string, init: RequestInit = {}, stage = 'database'): Promise<any> {
   const response = await fetch(`${url}/rest/v1/${path}`, { ...init, headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', ...(init.headers || {}) } });
   const body = await response.text();
-  if (!response.ok) throw fail();
-  return body ? JSON.parse(body) : null;
+  let parsed: any = null;
+  try { parsed = body ? JSON.parse(body) : null; } catch (_) { parsed = null; }
+  if (!response.ok) throw new RestError(response.status, typeof parsed?.code === 'string' ? parsed.code : '', stage);
+  return parsed;
 }
 function query(params: Record<string, string>) { return new URLSearchParams(params).toString(); }
 async function authenticatedUser(req: Request) {
   const auth = req.headers.get('authorization') || '';
   const token = auth.match(/^Bearer\s+(.+)$/i)?.[1];
-  if (!token) throw fail();
+  if (!token) throw new HttpError(401, 'Iniciá sesión nuevamente para continuar.', 'authentication');
   const response = await fetch(`${url}/auth/v1/user`, { headers: { apikey: key, Authorization: `Bearer ${token}` } });
-  if (!response.ok) throw fail();
+  if (response.status === 401 || response.status === 403) throw new HttpError(401, 'La sesión venció o no es válida. Iniciá sesión nuevamente.', 'authentication');
+  if (!response.ok) throw new RestError(response.status, '', 'authentication');
   return await response.json();
 }
 async function requireAdmin(userId: string, workspaceId: string) {
   const q = query({ user_id: `eq.${userId}`, workspace_id: `eq.${workspaceId}`, is_active: 'eq.true', role: 'eq.admin', select: 'workspace_id', limit: '1' });
-  const rows = await rest(`tresor_workspace_members?${q}`);
-  if (!rows?.length) throw fail();
+  const rows = await rest(`tresor_workspace_members?${q}`, {}, 'workspace-authorization');
+  if (!rows?.length) throw new HttpError(403, 'Tu cuenta no tiene una membresía administradora activa en este workspace.', 'workspace-authorization');
 }
 async function getDelivery(workspaceId: string, tripId: string) {
   const q = query({ workspace_id: `eq.${workspaceId}`, trip_id: `eq.${tripId}`, select: 'id,workspace_id,trip_id,primary_passenger_id,status,revoked_at,token_hash,token_nonce,token_key_version', limit: '1' });
@@ -80,7 +90,7 @@ async function removeObject(workspaceId: string, tripId: string, deliveryId: str
   } catch (_) {
     // Los metadatos de la base siguen disponibles para un reintento seguro.
   }
-  throw new HttpError(503, 'No se pudieron retirar todos los PDF de Storage. El registro quedó pendiente y el enlace está revocado; pulsá Eliminar nuevamente para reintentar.');
+  throw new HttpError(503, 'No se pudieron retirar todos los PDF de Storage. El registro quedó pendiente y el enlace está revocado; pulsá Eliminar nuevamente para reintentar.', 'storage-delete');
 }
 async function removeDocuments(rows: any[], workspaceId: string) {
   for (const row of rows) await removeObject(workspaceId, row.trip_id, row.delivery_id, row.storage_path);
@@ -101,14 +111,14 @@ async function ensureNoPassengerDeletion(workspaceId: string, tripId: string) {
   if (people.some((p: any) => p.deletion_pending)) throw new HttpError(409, 'Un pasajero del viaje tiene una eliminación pendiente. Reintentá esa operación primero.');
 }
 async function deleteTrip(workspaceId: string, tripId: string, actorId: string) {
-  const began = await rest('rpc/tresor_begin_trip_deletion', { method: 'POST', body: JSON.stringify({ p_workspace_id: workspaceId, p_trip_id: tripId, p_actor_id: actorId }) });
+  const began = await rest('rpc/tresor_begin_trip_deletion', { method: 'POST', body: JSON.stringify({ p_workspace_id: workspaceId, p_trip_id: tripId, p_actor_id: actorId }) }, 'rpc-begin-trip');
   if (began === false) return { deleted: true, alreadyDeleted: true, filesRemoved: 0 };
   const rows = await rest(`tresor_documents?${query({ workspace_id: `eq.${workspaceId}`, trip_id: `eq.${tripId}`, select: 'workspace_id,trip_id,delivery_id,passenger_id,storage_path' })}`);
   const documents = safeRows(rows, workspaceId, tripId);
   await removeDocuments(documents, workspaceId);
   let completed: boolean;
-  try { completed = await rest('rpc/tresor_finish_trip_deletion', { method: 'POST', body: JSON.stringify({ p_workspace_id: workspaceId, p_trip_id: tripId, p_actor_id: actorId }) }); }
-  catch (_) { throw new HttpError(503, 'Los PDF fueron retirados, pero la eliminación de registros no terminó. El viaje sigue pendiente; pulsá Eliminar nuevamente para reintentar.'); }
+  try { completed = await rest('rpc/tresor_finish_trip_deletion', { method: 'POST', body: JSON.stringify({ p_workspace_id: workspaceId, p_trip_id: tripId, p_actor_id: actorId }) }, 'rpc-finish-trip'); }
+  catch (error) { if (error instanceof RestError) throw error; throw new HttpError(503, 'Los PDF fueron retirados, pero la eliminación de registros no terminó. El viaje sigue pendiente; pulsá Eliminar nuevamente para reintentar.', 'rpc-finish-trip'); }
   if (completed === false) return { deleted: true, alreadyDeleted: true, filesRemoved: documents.length };
   return { deleted: true, filesRemoved: documents.length };
 }
@@ -130,14 +140,14 @@ async function deletePassenger(workspaceId: string, passengerId: string, actorId
   const began = await rest('rpc/tresor_begin_passenger_deletion', {
     method: 'POST',
     body: JSON.stringify({ p_workspace_id: workspaceId, p_passenger_id: passengerId, p_actor_id: actorId, p_rotations: rotations })
-  });
+  }, 'rpc-begin-passenger');
   if (began === false) return { deleted: true, alreadyDeleted: true, filesRemoved: 0, rotatedLinks: 0 };
   const rows = await rest(`tresor_documents?${query({ workspace_id: `eq.${workspaceId}`, passenger_id: `eq.${passengerId}`, select: 'workspace_id,trip_id,delivery_id,passenger_id,storage_path' })}`);
   const documents = safeRows(rows, workspaceId, '', passengerId);
   await removeDocuments(documents, workspaceId);
   let completed: boolean;
-  try { completed = await rest('rpc/tresor_finish_passenger_deletion', { method: 'POST', body: JSON.stringify({ p_workspace_id: workspaceId, p_passenger_id: passengerId, p_actor_id: actorId }) }); }
-  catch (_) { throw new HttpError(503, 'Los PDF individuales fueron retirados, pero la eliminación de registros no terminó. El pasajero sigue pendiente; pulsá Eliminar nuevamente para reintentar.'); }
+  try { completed = await rest('rpc/tresor_finish_passenger_deletion', { method: 'POST', body: JSON.stringify({ p_workspace_id: workspaceId, p_passenger_id: passengerId, p_actor_id: actorId }) }, 'rpc-finish-passenger'); }
+  catch (error) { if (error instanceof RestError) throw error; throw new HttpError(503, 'Los PDF individuales fueron retirados, pero la eliminación de registros no terminó. El pasajero sigue pendiente; pulsá Eliminar nuevamente para reintentar.', 'rpc-finish-passenger'); }
   if (completed === false) return { deleted: true, alreadyDeleted: true, filesRemoved: documents.length, rotatedLinks: rotations.length };
   return { deleted: true, filesRemoved: documents.length, rotatedLinks: rotations.length };
 }
@@ -146,8 +156,9 @@ Deno.serve(async (req: Request) => {
   const pre = preflight(req); if (pre) return pre;
   if (req.method !== 'POST') return json(req, { error: 'Método no disponible.' }, 405);
   if (!url || !key) return json(req, { error: 'La función no está configurada.' }, 503);
+  let action = 'unknown';
   try {
-    const body = await req.json(); const action = String(body?.action || '');
+    const body = await req.json(); action = String(body?.action || '');
     const user = await authenticatedUser(req);
     const workspaceId = String(body?.workspaceId || '');
     if (!uuid(workspaceId)) throw fail();
@@ -204,7 +215,19 @@ Deno.serve(async (req: Request) => {
     }
     return json(req, { error: 'Solicitud inválida.' }, 400);
   } catch (error) {
-    if (error instanceof HttpError) return json(req, { error: error.publicMessage }, error.status);
-    return json(req, { error: 'No se pudo autorizar o completar la operación. Revisá la sesión y el acceso del workspace.' }, 403);
+    if (error instanceof HttpError) {
+      console.warn('[tresor-delivery-admin] request rejected', { action, stage: error.stage, status: error.status });
+      return json(req, { error: error.publicMessage }, error.status);
+    }
+    if (error instanceof RestError) {
+      // Log only status, SQLSTATE and stage; never log tokens, request bodies, SQL text or file paths.
+      console.error('[tresor-delivery-admin] backend request failed', { action, stage: error.stage, status: error.status, code: /^[0-9A-Z]{5}$/.test(error.code) ? error.code : '' });
+      if (error.code === '42501') return json(req, { error: 'Supabase rechazó la autorización administrativa de esta operación.' }, 403);
+      if (error.code === '55000') return json(req, { error: 'La protección de eliminación de Supabase rechazó la operación. No se confirmó el borrado; revisá los logs y reintentá solo después de verificar su estado.' }, 409);
+      if (error.stage.startsWith('storage')) return json(req, { error: 'No se pudo completar el borrado de archivos en Storage. La operación quedó pendiente y puede reintentarse.' }, 503);
+      return json(req, { error: 'Supabase no pudo completar un paso de base de datos. No se confirmó la eliminación; verificá su estado antes de reintentar.' }, 502);
+    }
+    console.error('[tresor-delivery-admin] unexpected failure', { action, name: error instanceof Error ? error.name : 'Error' });
+    return json(req, { error: 'Ocurrió un error interno. No se confirmó la eliminación; verificá el estado antes de reintentar.' }, 500);
   }
 });
