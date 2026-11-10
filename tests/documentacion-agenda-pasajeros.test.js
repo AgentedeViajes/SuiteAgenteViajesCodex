@@ -185,5 +185,5 @@ test('editar viaje conserva compatibilidad con Store anterior y muestra solo aso
 test('HTML de la aplicación invalida caché de los scripts del formulario',()=>{
   const fs=require('node:fs'),html=fs.readFileSync(require('node:path').join(__dirname,'../apps/documentacion-agenda-pasajeros.html'),'utf8');
   assert.match(html,/documentacion-agenda-pasajeros-store\.js\?v=20261110-safe-delete1/);
-  assert.match(html,/documentacion-agenda-pasajeros\.js\?v=20261110-safe-delete1/);
+  assert.match(html,/documentacion-agenda-pasajeros\.js\?v=20261110-safe-delete2/);
 });

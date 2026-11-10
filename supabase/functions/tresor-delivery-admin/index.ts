@@ -110,16 +110,33 @@ async function ensureNoPassengerDeletion(workspaceId: string, tripId: string) {
   const people = await rest(`tresor_passengers?${query({ workspace_id: `eq.${workspaceId}`, id: `in.(${ids.join(',')})`, select: 'id,deletion_pending' })}`);
   if (people.some((p: any) => p.deletion_pending)) throw new HttpError(409, 'Un pasajero del viaje tiene una eliminación pendiente. Reintentá esa operación primero.');
 }
+async function tripStillExists(workspaceId: string, tripId: string) {
+  const rows = await rest(`tresor_trips?${query({ workspace_id: `eq.${workspaceId}`, id: `eq.${tripId}`, select: 'id', limit: '1' })}`, {}, 'verify-trip-delete');
+  return Array.isArray(rows) && rows.length > 0;
+}
+async function passengerStillExists(workspaceId: string, passengerId: string) {
+  const rows = await rest(`tresor_passengers?${query({ workspace_id: `eq.${workspaceId}`, id: `eq.${passengerId}`, select: 'id', limit: '1' })}`, {}, 'verify-passenger-delete');
+  return Array.isArray(rows) && rows.length > 0;
+}
 async function deleteTrip(workspaceId: string, tripId: string, actorId: string) {
   const began = await rest('rpc/tresor_begin_trip_deletion', { method: 'POST', body: JSON.stringify({ p_workspace_id: workspaceId, p_trip_id: tripId, p_actor_id: actorId }) }, 'rpc-begin-trip');
-  if (began === false) return { deleted: true, alreadyDeleted: true, filesRemoved: 0 };
+  if (began === false) {
+    if (await tripStillExists(workspaceId, tripId)) throw new HttpError(409, 'Supabase no inició la eliminación: el viaje todavía existe. No se borraron sus archivos.', 'rpc-begin-trip');
+    return { deleted: true, alreadyDeleted: true, filesRemoved: 0 };
+  }
+  if (began !== true) throw new HttpError(502, 'Supabase no confirmó el inicio de la eliminación. No se continuará con los archivos.', 'rpc-begin-trip');
   const rows = await rest(`tresor_documents?${query({ workspace_id: `eq.${workspaceId}`, trip_id: `eq.${tripId}`, select: 'workspace_id,trip_id,delivery_id,passenger_id,storage_path' })}`);
   const documents = safeRows(rows, workspaceId, tripId);
   await removeDocuments(documents, workspaceId);
   let completed: boolean;
   try { completed = await rest('rpc/tresor_finish_trip_deletion', { method: 'POST', body: JSON.stringify({ p_workspace_id: workspaceId, p_trip_id: tripId, p_actor_id: actorId }) }, 'rpc-finish-trip'); }
   catch (error) { if (error instanceof RestError) throw error; throw new HttpError(503, 'Los PDF fueron retirados, pero la eliminación de registros no terminó. El viaje sigue pendiente; pulsá Eliminar nuevamente para reintentar.', 'rpc-finish-trip'); }
-  if (completed === false) return { deleted: true, alreadyDeleted: true, filesRemoved: documents.length };
+  if (completed === false) {
+    if (await tripStillExists(workspaceId, tripId)) throw new HttpError(503, 'Los PDF fueron retirados, pero el viaje sigue en Supabase con la eliminación pendiente. Podés reintentar de forma segura.', 'rpc-finish-trip');
+    return { deleted: true, alreadyDeleted: true, filesRemoved: documents.length };
+  }
+  if (completed !== true) throw new HttpError(502, 'Supabase no confirmó el borrado del viaje.', 'rpc-finish-trip');
+  if (await tripStillExists(workspaceId, tripId)) throw new HttpError(502, 'Supabase respondió que terminó, pero el viaje todavía existe. No se informará como eliminado.', 'verify-trip-delete');
   return { deleted: true, filesRemoved: documents.length };
 }
 async function deletePassenger(workspaceId: string, passengerId: string, actorId: string) {
@@ -141,14 +158,23 @@ async function deletePassenger(workspaceId: string, passengerId: string, actorId
     method: 'POST',
     body: JSON.stringify({ p_workspace_id: workspaceId, p_passenger_id: passengerId, p_actor_id: actorId, p_rotations: rotations })
   }, 'rpc-begin-passenger');
-  if (began === false) return { deleted: true, alreadyDeleted: true, filesRemoved: 0, rotatedLinks: 0 };
+  if (began === false) {
+    if (await passengerStillExists(workspaceId, passengerId)) throw new HttpError(409, 'Supabase no inició la eliminación: el pasajero todavía existe.', 'rpc-begin-passenger');
+    return { deleted: true, alreadyDeleted: true, filesRemoved: 0, rotatedLinks: 0 };
+  }
+  if (began !== true) throw new HttpError(502, 'Supabase no confirmó el inicio de la eliminación del pasajero.', 'rpc-begin-passenger');
   const rows = await rest(`tresor_documents?${query({ workspace_id: `eq.${workspaceId}`, passenger_id: `eq.${passengerId}`, select: 'workspace_id,trip_id,delivery_id,passenger_id,storage_path' })}`);
   const documents = safeRows(rows, workspaceId, '', passengerId);
   await removeDocuments(documents, workspaceId);
   let completed: boolean;
   try { completed = await rest('rpc/tresor_finish_passenger_deletion', { method: 'POST', body: JSON.stringify({ p_workspace_id: workspaceId, p_passenger_id: passengerId, p_actor_id: actorId }) }, 'rpc-finish-passenger'); }
   catch (error) { if (error instanceof RestError) throw error; throw new HttpError(503, 'Los PDF individuales fueron retirados, pero la eliminación de registros no terminó. El pasajero sigue pendiente; pulsá Eliminar nuevamente para reintentar.', 'rpc-finish-passenger'); }
-  if (completed === false) return { deleted: true, alreadyDeleted: true, filesRemoved: documents.length, rotatedLinks: rotations.length };
+  if (completed === false) {
+    if (await passengerStillExists(workspaceId, passengerId)) throw new HttpError(503, 'Los PDF individuales fueron retirados, pero el pasajero sigue en Supabase con la eliminación pendiente. Podés reintentar de forma segura.', 'rpc-finish-passenger');
+    return { deleted: true, alreadyDeleted: true, filesRemoved: documents.length, rotatedLinks: rotations.length };
+  }
+  if (completed !== true) throw new HttpError(502, 'Supabase no confirmó el borrado del pasajero.', 'rpc-finish-passenger');
+  if (await passengerStillExists(workspaceId, passengerId)) throw new HttpError(502, 'Supabase respondió que terminó, pero el pasajero todavía existe. No se informará como eliminado.', 'verify-passenger-delete');
   return { deleted: true, filesRemoved: documents.length, rotatedLinks: rotations.length };
 }
 

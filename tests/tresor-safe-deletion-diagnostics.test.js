@@ -34,6 +34,33 @@ test('la interfaz informa progreso y no anuncia éxito si el registro sigue pres
   assert.match(ui, /No se completó la eliminación del pasajero/);
   assert.match(ui, /byId\(state\.passengers, id\)/);
   assert.match(ui, /deleteTrip\(id, button\)/);
+  const trip = ui.slice(ui.indexOf('async function deleteTrip('), ui.indexOf('function handleAction('));
+  assert.ok(trip.indexOf('result.deleted !== true') < trip.indexOf('await reloadData()'));
+  assert.ok(trip.indexOf('byId(state.trips, id)') < trip.indexOf("setStatus('Viaje y sus PDF eliminados."));
+});
+
+test('la Edge Function no trata false del RPC como éxito si el registro aún existe', () => {
+  const edge = read('supabase/functions/tresor-delivery-admin/index.ts');
+  const trip = edge.slice(edge.indexOf('async function deleteTrip('), edge.indexOf('async function deletePassenger('));
+  const passenger = edge.slice(edge.indexOf('async function deletePassenger('), edge.indexOf('Deno.serve('));
+  assert.match(trip, /if \(began === false\)[\s\S]*tripStillExists[\s\S]*throw new HttpError/);
+  assert.match(trip, /if \(completed === false\)[\s\S]*tripStillExists[\s\S]*throw new HttpError/);
+  assert.match(trip, /completed !== true/);
+  assert.match(trip, /verify-trip-delete/);
+  assert.match(passenger, /if \(began === false\)[\s\S]*passengerStillExists[\s\S]*throw new HttpError/);
+  assert.match(passenger, /if \(completed === false\)[\s\S]*passengerStillExists[\s\S]*throw new HttpError/);
+  assert.match(passenger, /completed !== true/);
+});
+
+test('la interfaz exige confirmación explícita del servidor y fuerza nueva versión del script', () => {
+  const ui = read('assets/documentacion-agenda-pasajeros.js');
+  for (const html of ['apps/documentacion-agenda-pasajeros.html', 'dist/apps/documentacion-agenda-pasajeros.html']) {
+    const contents = read(html);
+    assert.match(contents, /documentacion-agenda-pasajeros\.js\?v=20261110-safe-delete2/);
+    assert.doesNotMatch(contents, /documentacion-agenda-pasajeros\.js\?v=20261110-safe-delete1/);
+  }
+  assert.match(ui, /result\.deleted !== true/);
+  assert.equal(read('assets/documentacion-agenda-pasajeros.js'), read('dist/assets/documentacion-agenda-pasajeros.js'));
 });
 
 test('la interfaz está sincronizada y la migración previa permanece sin cambios locales', () => {

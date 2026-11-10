@@ -392,6 +392,7 @@
     setStatus('Eliminando pasajero y verificando sus documentos…', '');
     try {
       var result = await state.store.deletePassenger(id);
+      if (!result || result.deleted !== true) throw new Error('La función no confirmó que eliminó el pasajero. Verificá el estado antes de volver a intentar.');
       if (String(state.selectedPassengerId) === String(id)) state.selectedPassengerId = null;
       try { await reloadData(); } catch (_) { setStatus('La solicitud terminó, pero no se pudo actualizar la lista. Actualizá la página y verificá el estado antes de volver a intentar.', 'error'); return; }
       if (byId(state.passengers, id)) throw new Error('Supabase respondió, pero el pasajero todavía aparece después de actualizar la lista. No se mostrará como eliminado.');
@@ -414,7 +415,8 @@
     if (actionButton) { actionButton.disabled = true; actionButton.textContent = 'Eliminando…'; }
     setStatus('Eliminando viaje y verificando sus PDF…', '');
     try {
-      await state.store.deleteTrip(id);
+      var result = await state.store.deleteTrip(id);
+      if (!result || result.deleted !== true) throw new Error('La función no confirmó que eliminó el viaje. Verificá el estado antes de volver a intentar.');
       try { await reloadData(); } catch (_) { setStatus('La solicitud terminó, pero no se pudo actualizar la lista. Actualizá la página y verificá el estado antes de volver a intentar.', 'error'); return; }
       if (byId(state.trips, id)) throw new Error('Supabase respondió, pero el viaje todavía aparece después de actualizar la lista. No se mostrará como eliminado.');
       setStatus('Viaje y sus PDF eliminados. Los pasajeros y sus otros viajes se conservaron.', 'success');
