@@ -121,36 +121,28 @@ test('actualizar integrantes modifica solo las asociaciones del viaje selecciona
   assert.ok(writes[1].path.includes('workspace_id=eq.workspace-1'));
 });
 
-test('impide borrar un pasajero con historial y conserva viajes compartidos', async () => {
+test('el borrado de pasajero asociado se deriva al endpoint administrativo sin escrituras directas', async () => {
   const cloud = fakeCloud({ rows: { tresor_trip_passengers: [{ trip_id: 't-1' }] } });
   const store = Store.create(cloud, 'workspace-1');
-  await assert.rejects(store.deletePassenger('p-1'), error => error.code === 'PASSENGER_HAS_HISTORY');
-  assert.equal(cloud.calls.some(call => call.type === 'DELETE' && call.path.includes('/tresor_passengers?')), false);
-});
-
-test('elimina un pasajero solo cuando no conserva asociaciones ni documentos', async () => {
-  const cloud = fakeCloud();
-  const store = Store.create(cloud, 'workspace-1');
   await store.deletePassenger('p-1');
-  const deletion = cloud.calls.find(call => call.type === 'DELETE');
-  assert.ok(deletion.path.includes('/tresor_passengers?'));
-  assert.ok(deletion.path.includes('workspace_id=eq.workspace-1'));
+  const call = cloud.calls.find(item => item.path.includes('/functions/v1/tresor-delivery-admin'));
+  assert.ok(call);
+  assert.equal(JSON.parse(call.options.body).action, 'delete-passenger');
+  assert.equal(JSON.parse(call.options.body).workspaceId, 'workspace-1');
+  assert.equal(JSON.parse(call.options.body).passengerId, 'p-1');
+  assert.equal(cloud.calls.some(item => item.type === 'DELETE' && /tresor_passengers|tresor_trip_passengers/.test(item.path)), false);
 });
 
-test('bloquea eliminación de viajes con dependencias futuras', async () => {
+test('el borrado de viaje con dependencias se deriva al endpoint administrativo del workspace', async () => {
   const cloud = fakeCloud({ rows: { tresor_deliveries: [{ id: 'delivery-1' }] } });
   const store = Store.create(cloud, 'workspace-1');
-  await assert.rejects(store.deleteTrip('trip-1'), error => error.code === 'TRIP_HAS_DEPENDENCIES');
-  assert.equal(cloud.calls.some(call => call.type === 'DELETE'), false);
-});
-
-test('solo elimina viaje y relaciones dentro del workspace actual', async () => {
-  const cloud = fakeCloud();
-  const store = Store.create(cloud, 'workspace-1');
   await store.deleteTrip('trip-1');
-  const deletes = cloud.calls.filter(call => call.type === 'DELETE');
-  assert.equal(deletes.length, 2);
-  assert.ok(deletes.every(call => call.path.includes('workspace_id=eq.workspace-1')));
+  const call = cloud.calls.find(item => item.path.includes('/functions/v1/tresor-delivery-admin'));
+  assert.ok(call);
+  assert.equal(JSON.parse(call.options.body).action, 'delete-trip');
+  assert.equal(JSON.parse(call.options.body).workspaceId, 'workspace-1');
+  assert.equal(JSON.parse(call.options.body).tripId, 'trip-1');
+  assert.equal(cloud.calls.some(item => item.type === 'DELETE'), false);
 });
 
 
@@ -192,6 +184,6 @@ test('editar viaje conserva compatibilidad con Store anterior y muestra solo aso
 
 test('HTML de la aplicación invalida caché de los scripts del formulario',()=>{
   const fs=require('node:fs'),html=fs.readFileSync(require('node:path').join(__dirname,'../apps/documentacion-agenda-pasajeros.html'),'utf8');
-  assert.match(html,/documentacion-agenda-pasajeros-store\.js\?v=20261109-edit-trip-fix1/);
-  assert.match(html,/documentacion-agenda-pasajeros\.js\?v=20261109-edit-trip-fix1/);
+  assert.match(html,/documentacion-agenda-pasajeros-store\.js\?v=20261110-safe-delete1/);
+  assert.match(html,/documentacion-agenda-pasajeros\.js\?v=20261110-safe-delete1/);
 });

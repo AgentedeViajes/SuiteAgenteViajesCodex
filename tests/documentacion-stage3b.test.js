@@ -53,7 +53,7 @@ test('config de Edge Functions requiere validación manual del admin y permite p
  const fs=require('node:fs');const config=fs.readFileSync(path.join(__dirname,'../supabase/config.toml'),'utf8');
  const admin=fs.readFileSync(path.join(__dirname,'../supabase/functions/tresor-delivery-admin/index.ts'),'utf8');
  const pub=fs.readFileSync(path.join(__dirname,'../supabase/functions/tresor-portal/index.ts'),'utf8');
- assert.match(config,/\[functions\.tresor-delivery-admin\][\s\S]*?verify_jwt = false/);assert.match(admin,/auth\/v1\/user/);assert.match(admin,/role:'eq\.admin'/);
+ assert.match(config,/\[functions\.tresor-delivery-admin\][\s\S]*?verify_jwt = false/);assert.match(admin,/auth\/v1\/user/);assert.match(admin,/role:\s*'eq\.admin'/);
  assert.match(pub,/status:'eq\.active'/);assert.match(pub,/passenger_id:'is\.null'/);assert.match(pub,/expiresIn:120/);
  assert.doesNotMatch(admin+pub,/console\.(log|info|warn|error)/);
 });
@@ -82,7 +82,7 @@ test('CORS permite Prefer en el preflight del endpoint administrativo', () => {
 test('la entrega devuelta por la Edge Function incluye trip_id para Storage', () => {
  const fs=require('node:fs');
  const admin=fs.readFileSync(path.join(__dirname,'../supabase/functions/tresor-delivery-admin/index.ts'),'utf8');
- assert.match(admin,/return \{delivery:\{id:delivery\.id,trip_id:delivery\.trip_id,status:delivery\.status/);
+ assert.match(admin,/delivery: \{ id: delivery\.id, trip_id: delivery\.trip_id, status: delivery\.status/);
 });
 
 test('la carga se detiene antes de Storage si la ruta carece de UUIDs', async () => {

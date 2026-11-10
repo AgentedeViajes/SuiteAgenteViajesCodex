@@ -64,19 +64,9 @@
         return Array.isArray(data) ? data[0] : data;
       },
       async deletePassenger(id) {
-        var scope = byWorkspace(workspaceId, { passenger_id: eq(id) });
-        var checks = await Promise.all([
-          rows(cloud, tables.links, scope, 'trip_id'),
-          optionalRows(cloud, tables.documents, scope, 'id'),
-          optionalRows(cloud, tables.reservationPassengers, scope, 'reservation_id')
-        ]);
-        if (checks.some(function (items) { return items.length; })) {
-          var error = new Error('Este pasajero está vinculado a viajes o documentación. Quitá sus asociaciones desde cada registro para conservar el historial antes de eliminarlo.');
-          error.code = 'PASSENGER_HAS_HISTORY';
-          throw error;
-        }
-        var path = filterPath(tables.passengers, byWorkspace(workspaceId, { id: eq(id) }));
-        await cloud.api(path, { method: 'DELETE' });
+        return representation(cloud, '/functions/v1/tresor-delivery-admin', 'POST', {
+          action: 'delete-passenger', workspaceId: workspaceId, passengerId: id
+        });
       },
       async createTrip(record, passengerIds) {
         if (!passengerIds || !passengerIds.length) throw new Error('Seleccioná al menos un pasajero para el viaje.');
@@ -121,19 +111,9 @@
         return Array.isArray(data) ? data[0] : data;
       },
       async deleteTrip(id) {
-        var tripFilter = byWorkspace(workspaceId, { trip_id: eq(id) });
-        var dependencies = await Promise.all([
-          optionalRows(cloud, tables.deliveries, tripFilter, 'id'),
-          optionalRows(cloud, tables.reservations, tripFilter, 'id'),
-          optionalRows(cloud, tables.followups, tripFilter, 'id')
-        ]);
-        if (dependencies.some(function (items) { return items.length; })) {
-          var error = new Error('Este viaje tiene documentación, reservas o seguimientos vinculados. Conservá el registro y gestioná esas relaciones antes de eliminarlo.');
-          error.code = 'TRIP_HAS_DEPENDENCIES';
-          throw error;
-        }
-        await cloud.api(filterPath(tables.links, tripFilter), { method: 'DELETE' });
-        await cloud.api(filterPath(tables.trips, byWorkspace(workspaceId, { id: eq(id) })), { method: 'DELETE' });
+        return representation(cloud, '/functions/v1/tresor-delivery-admin', 'POST', {
+          action: 'delete-trip', workspaceId: workspaceId, tripId: id
+        });
       }
     };
   }

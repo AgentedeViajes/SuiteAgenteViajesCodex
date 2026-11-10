@@ -179,7 +179,7 @@
     var head = document.createElement('div'); head.className = 'detail-head';
     var title = document.createElement('div'); title.append(makeText('p', 'FICHA DEL PASAJERO', 'eyebrow'), makeText('h2', passengerName(person)), makeText('span', passengerTrips(person.id).length + (passengerTrips(person.id).length === 1 ? ' viaje registrado' : ' viajes registrados'), 'detail-count'));
     var actions = document.createElement('div'); actions.className = 'action-wrap';
-    actions.append(makeButton('Abrir WhatsApp', 'btn btn--whatsapp btn--small', 'open-whatsapp', { id: person.id }), makeButton('Editar datos', 'btn btn--secondary btn--small', 'edit-passenger', { id: person.id }), makeButton('Eliminar', 'btn btn--danger btn--small', 'delete-passenger', { id: person.id }));
+    actions.append(makeButton('Abrir WhatsApp', 'btn btn--whatsapp btn--small', 'open-whatsapp', { id: person.id }), makeButton('Editar datos', 'btn btn--secondary btn--small', 'edit-passenger', { id: person.id }), makeButton(person.deletion_pending ? 'Reintentar eliminación' : 'Eliminar', 'btn btn--danger btn--small', 'delete-passenger', { id: person.id }));
     head.append(title, actions); detail.append(head);
     var contacts = document.createElement('dl'); contacts.className = 'contact-grid';
     [['Correo', person.email || 'No registrado'], ['Teléfono', person.phone || 'No registrado'], ['WhatsApp', person.whatsapp || person.phone || 'No registrado'], ['Creado', dateLabel((person.created_at || '').slice(0, 10)) || 'Fecha no disponible']].forEach(function (item) {
@@ -253,7 +253,7 @@
     card.append(names);
     if (trip.notes) card.append(makeText('p', trip.notes, 'trip-notes'));
     var actions = document.createElement('div'); actions.className = 'action-wrap';
-    actions.append(makeButton('Editar viaje', 'btn btn--secondary btn--small', 'edit-trip', { id: trip.id }), makeButton('Eliminar', 'btn btn--danger btn--small', 'delete-trip', { id: trip.id }), makeButton('Documentación', 'btn btn--primary btn--small', 'manage-docs', { tripId: trip.id }), makeButton('Reservas aéreas', 'btn btn--secondary btn--small', 'manage-air', { tripId: trip.id }));
+    actions.append(makeButton('Editar viaje', 'btn btn--secondary btn--small', 'edit-trip', { id: trip.id }), makeButton(trip.deletion_pending ? 'Reintentar eliminación' : 'Eliminar', 'btn btn--danger btn--small', 'delete-trip', { id: trip.id }), makeButton('Documentación', 'btn btn--primary btn--small', 'manage-docs', { tripId: trip.id }), makeButton('Reservas aéreas', 'btn btn--secondary btn--small', 'manage-air', { tripId: trip.id }));
     card.append(actions); return card;
   }
   function renderAll() {
@@ -383,20 +383,38 @@
   async function deletePassenger(id) {
     var person = byId(state.passengers, id); if (!person) return;
     var trips = passengerTrips(id);
-    if (trips.length) {
-      window.alert(passengerName(person) + ' está vinculado a ' + trips.length + (trips.length === 1 ? ' viaje.' : ' viajes.') + ' Para conservar el historial, quitá primero a esta persona de esos viajes desde la edición del viaje. Los viajes compartidos y sus demás integrantes se conservarán.');
-      return;
+    var confirmation = person.deletion_pending
+      ? 'La eliminación de ' + passengerName(person) + ' quedó pendiente. ¿Querés reintentar? Los viajes se conservarán; sus enlaces del portal seguirán revocados.'
+      : '¿Eliminar definitivamente a ' + passengerName(person) + '? Se quitarán sus asociaciones, sus PDF individuales y las reservas aéreas que no tengan otros pasajeros asociados. Los viajes, otros pasajeros y documentos compartidos se conservarán. Los enlaces compartidos de ' + trips.length + (trips.length === 1 ? ' viaje se revocarán y rotarán; habrá que compartirlos nuevamente.' : ' viajes se revocarán y rotarán; habrá que compartirlos nuevamente.');
+    if (!window.confirm(confirmation)) return;
+    try {
+      var result = await state.store.deletePassenger(id);
+      if (String(state.selectedPassengerId) === String(id)) state.selectedPassengerId = null;
+      await reloadData();
+      var rotated = Number(result && result.rotatedLinks || 0);
+      setStatus('Pasajero eliminado. Se retiraron sus PDF individuales; los documentos compartidos y los viajes se conservaron.' + (rotated ? ' Se revocaron y rotaron ' + rotated + (rotated === 1 ? ' enlace; reactivá y compartí el nuevo desde Documentación.' : ' enlaces; reactivá y compartí los nuevos desde Documentación.') : ''), 'success');
+    } catch (error) {
+      reportSafeError(error, 'eliminar pasajero');
+      await reloadData().catch(function () {});
+      setStatus(noWorkspaceMessage(error), 'error');
     }
-    if (!window.confirm('¿Eliminar a ' + passengerName(person) + ' de la agenda? Esta acción no se puede deshacer.')) return;
-    try { await state.store.deletePassenger(id); if (String(state.selectedPassengerId) === String(id)) state.selectedPassengerId = null; await reloadData(); setStatus('Pasajero eliminado.', 'success'); }
-    catch (error) { reportSafeError(error, 'eliminar pasajero'); setStatus(noWorkspaceMessage(error), 'error'); }
   }
   async function deleteTrip(id) {
     var trip = byId(state.trips, id); if (!trip) return;
     var name = trip.trip_name || trip.destination;
-    if (!window.confirm('¿Eliminar el viaje «' + name + '» y quitar sus asociaciones? Los pasajeros permanecerán en la agenda.')) return;
-    try { await state.store.deleteTrip(id); await reloadData(); setStatus('Viaje eliminado. Los pasajeros siguen en la agenda.', 'success'); }
-    catch (error) { reportSafeError(error, 'eliminar viaje'); setStatus(noWorkspaceMessage(error), 'error'); }
+    var confirmation = trip.deletion_pending
+      ? 'La eliminación de «' + name + '» quedó pendiente. ¿Querés reintentar? El enlace del portal ya está revocado.'
+      : '¿Eliminar definitivamente el viaje «' + name + '»? Se borrarán sus vouchers y PDF de Storage, reservas, seguimientos y asociaciones. Los pasajeros y sus otros viajes permanecerán. Esta acción no se puede deshacer.';
+    if (!window.confirm(confirmation)) return;
+    try {
+      await state.store.deleteTrip(id);
+      await reloadData();
+      setStatus('Viaje y sus PDF eliminados. Los pasajeros y sus otros viajes se conservaron.', 'success');
+    } catch (error) {
+      reportSafeError(error, 'eliminar viaje');
+      await reloadData().catch(function () {});
+      setStatus(noWorkspaceMessage(error), 'error');
+    }
   }
   function handleAction(event) {
     var button = event.target.closest('[data-action]'); if (!button) return;
