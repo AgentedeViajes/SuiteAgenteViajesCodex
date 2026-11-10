@@ -78,19 +78,61 @@ async function removeObject(workspaceId: string, tripId: string, deliveryId: str
     throw new HttpError(503, 'No se pudo validar una ruta de PDF; el borrado quedó pendiente y el enlace fue revocado. Reintentá o contactá al administrador.');
   }
   const headers = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  let deleteStatus: number | null = null;
+  let deleteCode = '';
+  let deleteConfirmedAbsentOrRemoved = false;
   try {
-    await fetch(`${url}/storage/v1/object/${bucket}`, { method: 'DELETE', headers, body: JSON.stringify({ prefixes: [storagePath] }) });
+    const removed = await fetch(`${url}/storage/v1/object/${bucket}`, { method: 'DELETE', headers, body: JSON.stringify({ prefixes: [storagePath] }) });
+    deleteStatus = removed.status;
+    if (removed.ok) deleteConfirmedAbsentOrRemoved = true;
+    else {
+      deleteCode = await safeStorageErrorCode(removed);
+      deleteConfirmedAbsentOrRemoved = await confirmsMissingStorageObjectResponse(removed);
+    }
   } catch (_) {
-    // Aunque falle la respuesta de borrado, se consulta el objeto: un timeout puede ocurrir luego de borrarlo.
+    // Sin respuesta del borrado no se asume que Storage lo retiró; se conserva pendiente para reintentar.
   }
+  let infoStatus: number | null = null;
+  let infoCode = '';
   try {
-    // No confiamos únicamente en el HTTP 2xx: confirmamos que el objeto físico ya no existe.
+    // El endpoint de información confirma que Storage ya no reporta la ruta.
     const info = await fetch(`${url}/storage/v1/object/info/${bucket}/${safeStoragePath(storagePath)}`, { headers });
-    if (info.status === 404) return;
+    infoStatus = info.status;
+    if (!info.ok) {
+      infoCode = await safeStorageErrorCode(info);
+      // Storage puede representar un objeto inexistente como HTTP 400 con
+      // statusCode 404. Solo esos códigos explícitos son idempotentes; fallos
+      // de permisos, bucket ausente y errores 5xx deben seguir bloqueando el RPC.
+      if (deleteConfirmedAbsentOrRemoved && await confirmsMissingStorageObjectResponse(info)) return;
+    }
   } catch (_) {
     // Los metadatos de la base siguen disponibles para un reintento seguro.
   }
+  console.warn('[tresor-delivery-admin] Storage deletion not confirmed', {
+    stage: 'storage-delete', deleteStatus, deleteCode, infoStatus, infoCode
+  });
   throw new HttpError(503, 'No se pudieron retirar todos los PDF de Storage. El registro quedó pendiente y el enlace está revocado; pulsá Eliminar nuevamente para reintentar.', 'storage-delete');
+}
+function confirmsMissingStorageObject(status, payload) {
+  if ((status !== 400 && status !== 404) || !payload || typeof payload !== 'object') return false;
+  const statusCode = String(payload.statusCode ?? payload.httpStatusCode ?? payload.status ?? status);
+  const code = String(payload.error ?? payload.code ?? '').toLowerCase();
+  if (statusCode !== '404') return false;
+  if (code === 'no_such_key' || code === 'nosuchkey' || code === 'object_not_found') return true;
+  return code === 'not_found' && /object\s+not\s+found/i.test(String(payload.message ?? ''));
+}
+async function confirmsMissingStorageObjectResponse(response: Response) {
+  try { return confirmsMissingStorageObject(response.status, await response.clone().json()); }
+  catch (_) { return false; }
+}
+async function safeStorageErrorCode(response: Response) {
+  try {
+    const payload = await response.clone().json();
+    const candidate = payload?.code ?? payload?.error ?? payload?.statusCode;
+    return typeof candidate === 'string' || typeof candidate === 'number'
+      ? String(candidate).slice(0, 48).replace(/[^A-Za-z0-9_-]/g, '')
+      : '';
+  } catch (_) { return ''; }
 }
 async function removeDocuments(rows: any[], workspaceId: string) {
   for (const row of rows) await removeObject(workspaceId, row.trip_id, row.delivery_id, row.storage_path);
@@ -144,6 +186,12 @@ async function deletePassenger(workspaceId: string, passengerId: string, actorId
   if (!people?.length) return { deleted: true, alreadyDeleted: true, filesRemoved: 0, rotatedLinks: 0 };
   const links = await rest(`tresor_trip_passengers?${query({ workspace_id: `eq.${workspaceId}`, passenger_id: `eq.${passengerId}`, select: 'trip_id' })}`);
   const tripIds = [...new Set((links || []).map((x: any) => x.trip_id).filter(uuid))];
+  if (tripIds.length) {
+    const trips = await rest(`tresor_trips?${query({ workspace_id: `eq.${workspaceId}`, id: `in.(${tripIds.join(',')})`, select: 'id,deletion_pending' })}`, {}, 'related-trip-check');
+    if ((trips || []).some((trip: any) => trip.deletion_pending)) {
+      throw new HttpError(409, 'Este pasajero está asociado a un viaje con eliminación pendiente. Primero reintentá finalizar la eliminación del viaje; no se modificó el pasajero.', 'related-trip-pending');
+    }
+  }
   const deliveries = tripIds.length ? await rest(`tresor_deliveries?${query({ workspace_id: `eq.${workspaceId}`, trip_id: `in.(${tripIds.join(',')})`, select: 'id,trip_id' })}`) : [];
   const rotations = [];
   const currentVersion = Number(Deno.env.get('TRESOR_PORTAL_CURRENT_KEY_VERSION') || '1');

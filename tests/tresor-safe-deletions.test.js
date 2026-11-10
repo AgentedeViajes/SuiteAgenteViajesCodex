@@ -29,8 +29,8 @@ test('el viaje se revoca, valida rutas registradas, borra Storage y luego finali
   assert.match(edge, /validDocumentPath\(row\.storage_path, workspaceId, row\.trip_id, row\.delivery_id\)/);
   assert.match(edge, /storage\/v1\/object\/\$\{bucket\}/);
   assert.match(edge, /object\/info\/\$\{bucket\}/);
-  assert.match(edge, /No confiamos únicamente en el HTTP 2xx/);
-  assert.match(edge, /if \(info\.status === 404\) return/);
+  assert.match(edge, /endpoint de información confirma que Storage ya no reporta la ruta/);
+  assert.match(edge, /deleteConfirmedAbsentOrRemoved && await confirmsMissingStorageObjectResponse\(info\)\) return/);
 });
 
 test('borrar pasajero elimina solo sus PDF privados y rota/revoca enlaces del grupo', () => {

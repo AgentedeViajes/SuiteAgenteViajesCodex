@@ -52,6 +52,72 @@ test('la Edge Function no trata false del RPC como éxito si el registro aún ex
   assert.match(passenger, /completed !== true/);
 });
 
+test('la compatibilidad JWT revisa ambas fuentes de claims de forma independiente', () => {
+  const migration = read('supabase/migrations/202611100003_tresor_deletion_claim_or.sql');
+  const guard = migration.slice(migration.indexOf('CREATE OR REPLACE FUNCTION tresor_private.guard_tresor_deletion_pending'));
+  assert.match(guard, /current_setting\('request\.jwt\.claim\.role', true\) = 'service_role'\s+OR\s+COALESCE\(/);
+  assert.match(guard, /NULLIF\(current_setting\('request\.jwt\.claims', true\), ''\)::jsonb ->> 'role'/);
+  assert.doesNotMatch(guard, /IF COALESCE\([\s\S]*?request\.jwt\.claim\.role/);
+  assert.match(migration, /trigger_count <> 10/);
+  assert.match(migration, /^BEGIN;/);
+  assert.match(migration, /COMMIT;\s*$/);
+});
+
+test('pasajeros vinculados a un viaje pendiente reciben un conflicto seguro antes del RPC', () => {
+  const edge = read('supabase/functions/tresor-delivery-admin/index.ts');
+  const passenger = edge.slice(edge.indexOf('async function deletePassenger('), edge.indexOf('Deno.serve('));
+  assert.match(passenger, /related-trip-check/);
+  assert.match(passenger, /trip\.deletion_pending/);
+  assert.match(passenger, /related-trip-pending/);
+  assert.ok(passenger.indexOf('related-trip-pending') < passenger.indexOf('rpc/tresor_begin_passenger_deletion'));
+});
+
+test('el RPC de inicio rechaza expresamente pasajeros de viajes pendientes antes de cambiar datos', () => {
+  const migration = read('supabase/migrations/202611100001_tresor_safe_deletions.sql');
+  const begin = migration.slice(migration.indexOf('FUNCTION public.tresor_begin_passenger_deletion'), migration.indexOf('FUNCTION public.tresor_finish_trip_deletion'));
+  const pendingCheck = begin.indexOf("t.deletion_pending");
+  const raise = begin.indexOf("USING ERRCODE = '55000'", pendingCheck);
+  const mutation = begin.indexOf('UPDATE public.tresor_passengers SET deletion_pending = true');
+  assert.ok(pendingCheck >= 0 && raise > pendingCheck && mutation > raise);
+  assert.match(begin, /Uno de los viajes tiene una eliminación pendiente/);
+});
+
+test('fallos de Storage registran estados HTTP y códigos acotados sin rutas ni cuerpos', () => {
+  const edge = read('supabase/functions/tresor-delivery-admin/index.ts');
+  const deletion = edge.slice(edge.indexOf('async function removeObject('), edge.indexOf('async function removeDocuments('));
+  assert.match(deletion, /deleteStatus/);
+  assert.match(deletion, /infoStatus/);
+  assert.match(deletion, /safeStorageErrorCode/);
+  assert.match(deletion, /Storage deletion not confirmed/);
+  assert.match(deletion, /deleteConfirmedAbsentOrRemoved && await confirmsMissingStorageObjectResponse\(info\)\) return/);
+  assert.doesNotMatch(deletion, /console\.warn\([^;]*(?:storagePath|storage_path|token)/i);
+});
+
+test('solo confirma como idempotente la ausencia explícita del objeto, nunca errores de permiso o servicio', () => {
+  const edge = read('supabase/functions/tresor-delivery-admin/index.ts');
+  const start = edge.indexOf('function confirmsMissingStorageObject(');
+  const end = edge.indexOf('\nasync function confirmsMissingStorageObjectResponse', start);
+  assert.ok(start >= 0 && end > start, 'helper de clasificación de objeto ausente presente');
+  const helperSource = edge.slice(start, end);
+  const confirmsMissing = new Function(`${helperSource}; return confirmsMissingStorageObject;`)();
+  const absent = { statusCode: '404', error: 'not_found', message: 'Object not found' };
+  assert.equal(confirmsMissing(400, absent), true, 'acepta el formato de error de Storage para objeto ausente');
+  assert.equal(confirmsMissing(404, absent), true, 'acepta HTTP 404 con cuerpo explícito de objeto ausente');
+  assert.equal(confirmsMissing(404, { code: 'NoSuchKey', message: 'Object not found' }), true, 'acepta el formato actual de Storage');
+  assert.equal(confirmsMissing(404, { statusCode: '404', error: 'NoSuchKey' }), true, 'acepta clave inexistente identificada por código');
+  assert.equal(confirmsMissing(404, { statusCode: '404', error: 'BucketNotFound' }), false, 'no confunde bucket ausente con objeto ausente');
+  assert.equal(confirmsMissing(404, { statusCode: '404', error: 'not_found', message: 'Bucket not found' }), false);
+  assert.equal(confirmsMissing(404, { statusCode: '404', error: 'not_found' }), false, 'not_found genérico no es suficiente');
+  assert.equal(confirmsMissing(403, absent), false, 'no ignora permisos');
+  assert.equal(confirmsMissing(503, absent), false, 'no ignora errores del servicio');
+  assert.equal(confirmsMissing(200, absent), false, 'no clasifica una respuesta exitosa como ausencia');
+  const deletion = edge.slice(edge.indexOf('async function removeObject('), edge.indexOf('async function removeDocuments('));
+  assert.match(deletion, /if \(removed\.ok\) deleteConfirmedAbsentOrRemoved = true/);
+  assert.match(deletion, /deleteConfirmedAbsentOrRemoved = await confirmsMissingStorageObjectResponse\(removed\)/);
+  assert.match(deletion, /deleteConfirmedAbsentOrRemoved && await confirmsMissingStorageObjectResponse\(info\)/);
+  assert.match(deletion, /Sin respuesta del borrado no se asume/);
+});
+
 test('la interfaz exige confirmación explícita del servidor y fuerza nueva versión del script', () => {
   const ui = read('assets/documentacion-agenda-pasajeros.js');
   for (const html of ['apps/documentacion-agenda-pasajeros.html', 'dist/apps/documentacion-agenda-pasajeros.html']) {
